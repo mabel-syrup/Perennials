@@ -10,7 +10,7 @@ using StardewValley.TerrainFeatures;
 using StardewValley.Tools;
 using _SyrupFramework;
 
-namespace CropGenetics
+namespace Perennials
 {
     class CropSoil : TerrainFeature, IModdedItem
     {

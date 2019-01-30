@@ -8,7 +8,7 @@ using StardewValley;
 using StardewValley.TerrainFeatures;
 using Netcode;
 
-namespace CropGenetics
+namespace Perennials
 {
     public static class PerennialsGlobal
     {

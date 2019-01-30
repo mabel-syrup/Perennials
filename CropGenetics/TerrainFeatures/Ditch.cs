@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 
-namespace CropGenetics
+namespace Perennials
 {
     public class Ditch
     {

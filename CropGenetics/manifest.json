@@ -4,7 +4,7 @@
   "Version": "0.1.0",
   "Description": "Overhauls the way crops work in the game",
   "UniqueID": "mabelsyrup.perennials",
-  "EntryDll": "CropGenetics.dll",
+  "EntryDll": "Perennials.dll",
   "MinimumApiVersion": "2.0",
   "UpdateKeys": []
 }

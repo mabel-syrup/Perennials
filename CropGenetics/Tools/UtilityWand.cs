@@ -12,7 +12,7 @@ using StardewValley.TerrainFeatures;
 using Microsoft.Xna.Framework;
 using Netcode;
 
-namespace CropGenetics
+namespace Perennials
 {
     public class UtilityWand : Tool, IModdedItem
     {

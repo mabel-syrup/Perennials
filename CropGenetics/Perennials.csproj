@@ -7,8 +7,8 @@
     <ProjectGuid>{9523BD80-6E06-4530-A0FA-2074D6452612}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>CropGenetics</RootNamespace>
-    <AssemblyName>CropGenetics</AssemblyName>
+    <RootNamespace>Perennials</RootNamespace>
+    <AssemblyName>Perennials</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <NuGetPackageImportStamp>

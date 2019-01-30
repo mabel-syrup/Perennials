@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using StardewValley;
 using _SyrupFramework;
 
-namespace CropGenetics
+namespace Perennials
 {
     public class PerennialsHandler : IModHandler
     {

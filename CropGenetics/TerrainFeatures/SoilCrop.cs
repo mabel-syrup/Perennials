@@ -10,7 +10,7 @@ using StardewValley;
 using _SyrupFramework;
 
 
-namespace CropGenetics
+namespace Perennials
 {
     public class SoilCrop
     {

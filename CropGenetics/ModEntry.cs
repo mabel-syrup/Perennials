@@ -10,7 +10,7 @@ using StardewValley.Menus;
 using StardewValley.Characters;
 using _SyrupFramework;
 
-namespace CropGenetics
+namespace Perennials
 {
     public class ModEntry : Mod
     {

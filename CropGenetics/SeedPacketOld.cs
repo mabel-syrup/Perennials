@@ -7,7 +7,7 @@ using StardewValley.Tools;
 using StardewValley;
 using _SyrupFramework;
 
-namespace CropGenetics
+namespace Perennials
 {
     public class SeedPacketOld : Stackable, IModdedItem
     {

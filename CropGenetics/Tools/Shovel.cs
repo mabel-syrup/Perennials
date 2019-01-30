@@ -11,7 +11,7 @@ using Microsoft.Xna.Framework;
 using xTile.Dimensions;
 using Netcode;
 
-namespace CropGenetics
+namespace Perennials
 {
     public class Shovel : Tool, IModdedItem
     {

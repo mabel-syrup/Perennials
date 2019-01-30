@@ -10,7 +10,7 @@ using StardewValley.Tools;
 using Netcode;
 using _SyrupFramework;
 
-namespace CropGenetics
+namespace Perennials
 {
     public class SeedPacketNew : Stackable, IModdedItem
     {

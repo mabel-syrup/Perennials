@@ -9,7 +9,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Netcode;
 
-namespace CropGenetics
+namespace Perennials
 {
     class SeedPacket : StardewValley.Object, IModdedItem
     {

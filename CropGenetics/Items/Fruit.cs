@@ -8,7 +8,7 @@ using StardewValley;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework;
 
-namespace CropGenetics
+namespace Perennials
 {
     public class Fruit : StardewValley.Object, IModdedItem
     {

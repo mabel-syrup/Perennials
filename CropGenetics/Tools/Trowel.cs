@@ -12,7 +12,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Netcode;
 
-namespace CropGenetics
+namespace Perennials
 {
     public class Trowel : Tool, IModdedItem
     {
