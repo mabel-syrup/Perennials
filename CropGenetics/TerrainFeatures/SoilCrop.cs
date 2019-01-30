@@ -870,7 +870,7 @@ namespace CropGenetics
             //Vanilla dead sprite selection
             if (this.dead)
                 return new Rectangle(64 + number % 4 * 16, 1024, 16, 32);
-            else if (isSeed() && (!specialType.Equals("Bush") || !dormant) && !mature)
+            else if (isSeed() && (!specialType.Equals("Bush") || !dormant))
                 return new Rectangle((columnInSpriteSheet * 128) + ((currentSprite - (number % 2)) * 16), rowInSpriteSheet * 32, 16, 32);
             return new Rectangle((columnInSpriteSheet * 128) + (currentSprite * 16), rowInSpriteSheet * 32, 16, 32);
         }
