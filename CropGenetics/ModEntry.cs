@@ -26,6 +26,7 @@ namespace Perennials
             Global.addType(new Fruit());
             Global.addHandler(new PerennialsHandler());
             CropSoil.populateDrawGuide();
+            CropBush.bushSprites = new Dictionary<string, Texture2D>();
             CropSoil.flatTexture = helper.Content.Load<Texture2D>("assets/cropsoil_flat.png", ContentSource.ModFolder);
             CropSoil.highTexture = helper.Content.Load<Texture2D>("assets/cropsoil_raised.png", ContentSource.ModFolder);
             CropSoil.lowTexture = helper.Content.Load<Texture2D>("assets/cropsoil_lowered.png", ContentSource.ModFolder);
@@ -38,7 +39,29 @@ namespace Perennials
             Helper.Events.GameLoop.DayStarted += SaveEvents_AfterLoad;
             Helper.Events.Input.ButtonPressed += DetectToolUse;
             Helper.Events.Display.MenuChanged += MenuEvents_MenuChanged;
+            loadCropData();
             //Helper.Events.Display.RenderingActiveMenu += MenuEvents_MenuChanged;
+        }
+
+        private void loadCropData()
+        {
+            foreach(string crop in SoilCrop.cropDictionary.Keys)
+            {
+                Dictionary<string, string> cropData = SoilCrop.getCropFromXNB(SoilCrop. cropDictionary[crop]);
+                string specialType = cropData["specialType"];
+                if (specialType.Equals("Bush"))
+                {
+                    Logger.Log("Loading bush sprite sheet for " + crop + "...");
+                    try
+                    {
+                        CropBush.bushSprites[crop] = Helper.Content.Load<Texture2D>("assets/bush/" + crop + ".png", ContentSource.ModFolder);
+                    }
+                    catch (Microsoft.Xna.Framework.Content.ContentLoadException)
+                    {
+                        Logger.Log("Could not find image file 'assets/bush/" + crop + ".png'!", LogLevel.Error);
+                    }
+                }
+            }
         }
 
         private void SaveEvents_AfterLoad(object sender, EventArgs e)

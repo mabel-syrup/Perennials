@@ -52,6 +52,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="TerrainFeatures\CropBush.cs" />
     <Compile Include="TerrainFeatures\CropSoil.cs" />
     <Compile Include="TerrainFeatures\Ditch.cs" />
     <Compile Include="Items\Fruit.cs" />

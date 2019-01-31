@@ -150,13 +150,12 @@ namespace Perennials
         {
             if (crop != null)
                 return false;
-            SoilCrop newCrop = new SoilCrop(which, height);
             if (!who.currentLocation.isFarm && !who.currentLocation.name.Equals("Greenhouse"))
             {
                 Game1.showRedMessage(Game1.content.LoadString("Strings\\StringsFromCSFiles:HoeDirt.cs.13919"));
                 return false;
             }
-            crop = newCrop;
+            crop = getCrop(which);
             Game1.playSound("dirtyHit");
             ++Game1.stats.seedsSown;
             return true;
@@ -556,6 +555,29 @@ namespace Perennials
             }
         }
 
+        private SoilCrop getCrop(string which)
+        {
+            string cropType = SoilCrop.getCropType(which);
+            SoilCrop newCrop;
+            if (cropType != "")
+            {
+                //Certain crops are of special types, which are their own classes.  This is where those are selected.
+                if (cropType.Equals("Bush"))
+                {
+                    newCrop = new CropBush(which, height);
+                }
+                else
+                {
+                    newCrop = new SoilCrop(which, height);
+                }
+            }
+            else
+            {
+                newCrop = new SoilCrop(which, height);
+            }
+            return newCrop;
+        }
+
         public Dictionary<string, string> Save()
         {
             Dictionary<string, string> data = new Dictionary<string, string>();
@@ -583,7 +605,7 @@ namespace Perennials
             holdOver = Convert.ToBoolean(data["holdOver"]);
             if (data.ContainsKey("crop"))
             {
-                crop = new SoilCrop(data["crop"]);
+                crop = getCrop(data["crop"]);
                 Dictionary<string, string> cropData = new Dictionary<string, string>();
                 foreach (string key in data.Keys)
                 {

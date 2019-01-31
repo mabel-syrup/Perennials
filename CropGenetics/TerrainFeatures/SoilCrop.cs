@@ -23,8 +23,8 @@ namespace Perennials
         public string crop;
 
         //Species-specific, not individual-specific.
-        private List<int> growthStages;
-        private List<int> regrowthStages;
+        public List<int> growthStages;
+        public List<int> regrowthStages;
         public List<string> seasonsToGrowIn;
         private bool perennial;
         private bool tropical;
@@ -35,7 +35,7 @@ namespace Perennials
         private double hydrationRequirement;
         public bool impassable = false;
         public bool shakable = true;
-        private string specialType;
+        public string specialType;
         private int yearsToFruit;
 
         //Individual-specific
@@ -48,8 +48,8 @@ namespace Perennials
         public bool hasFruit = false;
         private bool hasMatured = false;
 
-        private bool mature = false;
-        private bool dormant = false;
+        public bool mature = false;
+        public bool dormant = false;
         public int seedMaturity = 0;
         public int regrowMaturity = 0;
         public int seedDaysToMature = 0;
@@ -59,23 +59,37 @@ namespace Perennials
         private double hydration;
         public int neighbors;
         private double weedless;
-        private int age;
-        private int years = 0;
-        private int heightOffset;
+        public int age;
+        public int years = 0;
+        public int heightOffset;
 
         public bool weeds = false;
         public int[] npk;
-        private bool flip = false;
+        public bool flip = false;
         private Color tintColor = Color.ForestGreen;
         private int seasonOffset;
 
 
         public SoilCrop()
         {
-
+            
         }
 
         //Growing days/Fruiting days/Spring/Summer/Fall/Winter/Perennial/Hardy/Multiple Harvests/Regrow Time/Sprite Index
+
+        public static string getCropType(string cropName)
+        {
+            if (cropDictionary.ContainsKey(cropName))
+            {
+                Dictionary<string, string> cropData = getCropFromXNB(cropDictionary[cropName]);
+                return cropData["specialType"];
+            }
+            else
+            {
+                Logger.Log("No crop found by the name " + cropName);
+                return "";
+            }
+        }
 
         public SoilCrop(string cropName, int heightOffset=0)
         {
@@ -97,7 +111,7 @@ namespace Perennials
 
                 hydrationRequirement = 1f;
 
-                Dictionary<string, string> cropData = getCropFromXML(cropDictionary[cropName]);
+                Dictionary<string, string> cropData = getCropFromXNB(cropDictionary[cropName]);
 
                 string[] growStages = cropData["growthTimes"].Split(' ');
                 foreach (string stage in growStages)
@@ -128,10 +142,10 @@ namespace Perennials
                     impassable = true;
                     shakable = false;
                 }
-                else if (specialType.Equals("Bush"))
-                {
-                    impassable = true;
-                }
+                //else if (specialType.Equals("Bush"))
+                //{
+                //    impassable = true;
+                //}
                 yearsToFruit = Convert.ToInt32(cropData["growthYears"]);
                 hydrationRequirement = (Convert.ToInt32(cropData["hydration"]) / 100);
                 //int parentSheetIndex = Convert.ToInt32(cropData["parentSheetIndex"]);
@@ -148,7 +162,7 @@ namespace Perennials
             }
         }
 
-        public Dictionary<string, string> getCropFromXML(string data)
+        public static Dictionary<string, string> getCropFromXNB(string data)
         {
             Dictionary<string, string> cropData = new Dictionary<string, string>();
             string[] substrings = data.Split('/');
@@ -209,7 +223,7 @@ namespace Perennials
             return (perennial && !environment.Name.Equals("Greenhouse") && !seasonsToGrowIn.Contains(season));
         }
 
-        private bool isSeed()
+        public bool isSeed()
         {
             return getCurrentPhase() == 1 && !mature;
         }
@@ -244,7 +258,7 @@ namespace Perennials
             return phase;
         }
 
-        private void updateSpriteIndex(string spoofSeason = null)
+        public virtual void updateSpriteIndex(string spoofSeason = null)
         {
             if (spoofSeason is null)
                 spoofSeason = Game1.currentSeason;
@@ -442,7 +456,7 @@ namespace Perennials
                 currentSprite = currentPhase + 2;
         }
 
-        private bool isGrowingSeason(string season, GameLocation environment=null)
+        public bool isGrowingSeason(string season, GameLocation environment=null)
         {
             if (!(environment is null) && environment.Name.Equals("Greenhouse"))
                 return true;
@@ -485,7 +499,7 @@ namespace Perennials
             }
         }
 
-        public bool grow(bool hydrated, bool flooded, int xTile, int yTile, GameLocation environment, string spoofSeason = null)
+        public virtual bool grow(bool hydrated, bool flooded, int xTile, int yTile, GameLocation environment, string spoofSeason = null)
         {
             string season;
             if (spoofSeason != null)
@@ -865,7 +879,7 @@ namespace Perennials
             }
         }
 
-        private Rectangle getSprite(int number = 0)
+        public virtual Rectangle getSprite(int number = 0)
         {
             //Vanilla dead sprite selection
             if (this.dead)
@@ -875,7 +889,7 @@ namespace Perennials
             return new Rectangle((columnInSpriteSheet * 128) + (currentSprite * 16), rowInSpriteSheet * 32, 16, 32);
         }
 
-        public void draw(SpriteBatch b, Vector2 tileLocation, Color toTint, float rotation)
+        public virtual void draw(SpriteBatch b, Vector2 tileLocation, Color toTint, float rotation)
         {
             //b.Draw(cropSpriteSheet,
             //    Game1.GlobalToLocal(Game1.viewport, new Vector2((float)((double)tileLocation.X * (double)Game1.tileSize + (this.raisedSeeds || finalPhase() ? 0.0 : ((double)tileLocation.X * 11.0 + (double)tileLocation.Y * 7.0) % 10.0 - 5.0)) + (float)(Game1.tileSize / 2), (float)((double)tileLocation.Y * (double)Game1.tileSize + (this.raisedSeeds || finalPhase() ? 0.0 : ((double)tileLocation.Y * 11.0 + (double)tileLocation.X * 7.0) % 10.0 - 5.0)) + (float)(Game1.tileSize / 2))),
@@ -917,7 +931,7 @@ namespace Perennials
             );
         }
 
-        public void drawInMenu(SpriteBatch b, Vector2 screenPosition, Color toTint, float rotation, float scale, float layerDepth)
+        public virtual void drawInMenu(SpriteBatch b, Vector2 screenPosition, Color toTint, float rotation, float scale, float layerDepth)
         {
             b.Draw(cropSpriteSheet, screenPosition, new Rectangle?(this.getSprite(0)), toTint, rotation, new Vector2((float)(Game1.tileSize / 2), (float)(Game1.tileSize + Game1.tileSize / 2)), scale, this.flip ? SpriteEffects.FlipHorizontally : SpriteEffects.None, layerDepth);
         }
@@ -960,7 +974,7 @@ namespace Perennials
             return data;
         }
 
-        public void Load(Dictionary<string,string> data)
+        public virtual void Load(Dictionary<string,string> data)
         {
             try
             {
