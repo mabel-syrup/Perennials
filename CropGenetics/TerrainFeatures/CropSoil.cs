@@ -8,6 +8,7 @@ using Microsoft.Xna.Framework.Graphics;
 using StardewValley;
 using StardewValley.TerrainFeatures;
 using StardewValley.Tools;
+using Netcode;
 using _SyrupFramework;
 
 namespace Perennials
@@ -16,11 +17,18 @@ namespace Perennials
     {
         private Color c = Color.White;
 
-
         public int height;
         public const int Raised = 1;
         public const int Flat = 0;
         public const int Lowered = -1;
+
+        public const int RaisedHeight = 16;
+        public const int LoweredHeight = -16;
+
+        private const int Up = 0;
+        private const int Right = 1;
+        private const int Down = 2;
+        private const int Left = 3;
 
         public const double weedsChance = 0.05f;
 
@@ -43,6 +51,10 @@ namespace Perennials
         
         private string spoofedSeason;
 
+        private int index1 = 0;
+        private int index2 = 0;
+        private int index3 = 0;
+
 
         public CropSoil() : base(true)
         {
@@ -57,17 +69,67 @@ namespace Perennials
             return new Rectangle((int)((double)tileLocation.X * (double)Game1.tileSize), (int)((double)tileLocation.Y * (double)Game1.tileSize), Game1.tileSize, Game1.tileSize);
         }
 
+        private int distanceFromEdge(Point centerPoint, Vector2 tile, int edge)
+        {
+            int scale = Game1.tileSize;
+            if(edge == Up)
+            {
+                return (int)(centerPoint.Y - (tile.Y * scale));
+            }
+            else if (edge == Right)
+            {
+                return (int)(((tile.X + 1) * scale) - centerPoint.X);
+            }
+            else if (edge == Down)
+            {
+                return (int)(((tile.Y + 1) * scale) - centerPoint.Y);
+            }
+            else if (edge == Left)
+            {
+                return (int)(centerPoint.X - (tile.X * scale));
+            }
+            return -1;
+        }
+
+        private bool withinEdge(Point centerPoint, Vector2 tile, int widthOfEdge, int edge = -1)
+        {
+            int scale = Game1.tileSize;
+            Rectangle bounds;
+            if(edge == Up)
+            {
+                bounds = new Rectangle((int)tile.X * scale, (int)tile.Y * scale, scale, widthOfEdge);
+            }
+            else if(edge == Left)
+            {
+                bounds = new Rectangle((int)tile.X * scale, (int)tile.Y * scale, widthOfEdge, scale);
+            }
+            else if (edge == Down)
+            {
+                bounds = new Rectangle((int)tile.X * scale, (int)(tile.Y + 1) * scale - widthOfEdge, scale, widthOfEdge);
+            }
+            else if (edge == Right)
+            {
+                bounds = new Rectangle((int)(tile.X + 1) * scale - widthOfEdge, (int)tile.Y * scale, widthOfEdge, scale);
+            }
+            else
+            {
+                bounds = new Rectangle((int)tile.X * scale + widthOfEdge, (int)tile.Y * scale + widthOfEdge, scale - (widthOfEdge * 2), scale - (widthOfEdge * 2));
+            }
+
+            if (edge != -1)
+                return bounds.Contains(centerPoint);
+            return !bounds.Contains(centerPoint) && new Rectangle((int)tile.X * scale, (int)tile.Y * scale, scale, scale).Contains(centerPoint);
+        }
+
         public override void doCollisionAction(Rectangle positionOfCollider, int speedOfCollision, Vector2 tileLocation, Character who, GameLocation location)
         {
-            if (height == Lowered && !flooded)
-                (who as StardewValley.Farmer).temporarySpeedBuff = -1f;
-            else if (flooded)
-                (who as StardewValley.Farmer).temporarySpeedBuff = -2f;
-            else if (height == Raised)
-            {
-                (who as StardewValley.Farmer).temporarySpeedBuff = speedOfCollision < 5 ? -5f : -2f;
-            }
-            if (this.crop != null && this.crop.currentPhase != 0 && (speedOfCollision > 0 && (double)this.maxShake == 0.0) && (positionOfCollider.Intersects(this.getBoundingBox(tileLocation)) && Utility.isOnScreen(Utility.Vector2ToPoint(tileLocation), Game1.tileSize, location)))
+            //Logger.Log("COLLISION\nFARMER (" + positionOfCollider.X + ", " + positionOfCollider.Y + ", " + positionOfCollider.Width + ", " + positionOfCollider.Height + ")\n" +
+            //    "HEADING " + (who.getDirection() == 0 ? "UP" : who.getDirection() == 1 ? "RIGHT" : who.getDirection() == 2 ? "DOWN" : "LEFT") + "\n" +
+            //    "TILE (" + tileLocation.X * Game1.tileSize + ", " + tileLocation.Y * Game1.tileSize + ", " + (tileLocation.X + 1) * Game1.tileSize + ", " + (tileLocation.Y + 1) * Game1.tileSize + ")");
+            Point footCenter = new Point(positionOfCollider.X + (positionOfCollider.Width / 2), positionOfCollider.Y + positionOfCollider.Height);
+            if(who is Farmer)
+                processHeightManipulation(who as Farmer, footCenter, tileLocation);
+            if (this.crop != null && this.crop.getCurrentPhase() != 0 && (speedOfCollision > 0 && (double)this.maxShake == 0.0) && (positionOfCollider.Intersects(this.getBoundingBox(tileLocation)) && Utility.isOnScreen(Utility.Vector2ToPoint(tileLocation), Game1.tileSize, location)))
             {
                 if (Game1.soundBank != null && (who == null || who.GetType() != typeof(FarmAnimal)) && !Grass.grassSound.IsPlaying)
                 {
@@ -79,6 +141,112 @@ namespace Perennials
             if (this.crop == null || this.crop.currentPhase == 0 || (!(who is StardewValley.Farmer) || !(who as StardewValley.Farmer).running))
                 return;
             (who as StardewValley.Farmer).temporarySpeedBuff = -1f;
+        }
+
+        private void processHeightManipulation(Farmer who, Point footCenter, Vector2 tileLocation)
+        {
+            int currentHeight = PerennialsGlobal.getFarmerHeight(who);
+            if (currentHeight < LoweredHeight)
+                PerennialsGlobal.setFarmerHeight(who, currentHeight % LoweredHeight);
+            if (currentHeight > RaisedHeight)
+                PerennialsGlobal.setFarmerHeight(who, currentHeight % RaisedHeight);
+            if (height == Lowered)
+            {
+                if (!flooded)
+                    who.temporarySpeedBuff = -1f;
+                else
+                {
+                    who.temporarySpeedBuff = -2f;
+                }
+                if (withinEdge(footCenter, tileLocation, 10))
+                {
+                    //Farmer is within 20 pixels of the tile border.
+                    if (index1 < 1000 && withinEdge(footCenter, tileLocation, 10, Up))
+                    {
+                        //Top edge
+                        if (who.FacingDirection == Up || who.FacingDirection == Down)
+                        {
+                            who.temporarySpeedBuff = 4f;
+                            if (who.FacingDirection == Up)
+                                PerennialsGlobal.setFarmerHeight(who, 0);
+                            if (who.FacingDirection == Down)
+                                PerennialsGlobal.setFarmerHeight(who, LoweredHeight);
+                        }
+                    }
+                    if (index1 % 1000 < 500 && withinEdge(footCenter, tileLocation, 10, Down))
+                    {
+                        //Bottom Edge
+                        if (who.FacingDirection == Up || who.FacingDirection == Down)
+                        {
+                            who.temporarySpeedBuff = -10f;
+                            if (who.FacingDirection == Up)
+                                PerennialsGlobal.setFarmerHeight(who, LoweredHeight);
+                            if (who.FacingDirection == Down)
+                                PerennialsGlobal.setFarmerHeight(who, 0);
+                        }
+                    }
+                    int slopeHeight = PerennialsGlobal.getFarmerHeight(who);
+                    if (index1 % 500 < 100 && withinEdge(footCenter, tileLocation, 10, Right))
+                    {
+                        //Right Edge
+                        slopeHeight = (int)((distanceFromEdge(footCenter, tileLocation, Right) / 10f) * LoweredHeight);
+                    }
+                    if (index1 % 100 != 10 && withinEdge(footCenter, tileLocation, 10, Left))
+                    {
+                        //Left Edge
+                        slopeHeight = (int)((distanceFromEdge(footCenter, tileLocation, Left) / 10f) * LoweredHeight);
+                    }
+                    PerennialsGlobal.raiseFarmerTo(who, slopeHeight);
+                }
+            }
+            else if (height == Raised)
+            {
+                //(who as StardewValley.Farmer).temporarySpeedBuff = speedOfCollision < 5 ? -5f : -2f;
+                if (withinEdge(footCenter, tileLocation, 10))
+                {
+                    //Farmer is within 20 pixels of the tile border.
+                    if (index1 < 1000 && withinEdge(footCenter, tileLocation, 10, Up))
+                    {
+                        //Top Edge
+                        if (who.FacingDirection == Up || who.FacingDirection == Down)
+                        {
+                            who.temporarySpeedBuff = -10f;
+                            if (who.FacingDirection == Up)
+                                PerennialsGlobal.setFarmerHeight(who, 0);
+                            if (who.FacingDirection == Down)
+                                PerennialsGlobal.setFarmerHeight(who, RaisedHeight);
+                        }
+                    }
+                    if (index1 % 1000 < 500 && withinEdge(footCenter, tileLocation, 10, Down))
+                    {
+                        //Bottom Edge
+                        if (who.FacingDirection == Up || who.FacingDirection == Down)
+                        {
+                            who.temporarySpeedBuff = 4f;
+                            if (who.FacingDirection == Up)
+                                PerennialsGlobal.setFarmerHeight(who, RaisedHeight);
+                            if (who.FacingDirection == Down)
+                                PerennialsGlobal.setFarmerHeight(who, 0);
+                        }
+                    }
+                    int slopeHeight = PerennialsGlobal.getFarmerHeight(who);
+                    if (index1 % 500 < 100 && withinEdge(footCenter, tileLocation, 10, Right))
+                    {
+                        //Right Edge
+                        slopeHeight = (int)((distanceFromEdge(footCenter, tileLocation, Right) / 10f) * RaisedHeight);
+                    }
+                    if (index1 % 100 != 10 && withinEdge(footCenter, tileLocation, 10, Left))
+                    {
+                        //Left Edge
+                        slopeHeight = (int)((distanceFromEdge(footCenter, tileLocation, Left) / 10f) * RaisedHeight);
+                    }
+                    PerennialsGlobal.raiseFarmerTo(who, slopeHeight);
+                }
+                //else if (new Rectangle((int)tileLocation.X * Game1.tileSize, (int)tileLocation.Y * Game1.tileSize, Game1.tileSize, Game1.tileSize).Contains(footCenter))
+                //{
+
+                //}
+            }
         }
 
         private void shake(float shake, float rate, bool left)
@@ -163,6 +331,14 @@ namespace Perennials
 
         public override bool isPassable(Character c)
         {
+            //if (flooded && !(c as Farmer).swimming)
+            //{
+            //    return false;
+            //}
+            //else if (flooded && (c as Farmer).swimming)
+            //{
+            //    return true;
+            //}
             if (crop != null)
                 return !crop.impassable;
             return true;
@@ -381,14 +557,14 @@ namespace Perennials
                         {
                             CropSoil neighbor = (CropSoil)environment.terrainFeatures[key];
                             //Same hat!
-                            if(neighbor.crop != null && neighbor.crop.crop.Equals(crop.crop) && !neighbor.crop.dead && neighbor.crop.isMature())
+                            if(neighbor.crop != null && neighbor.crop.crop.Equals(crop.crop) && !neighbor.crop.dead && neighbor.crop.mature)
                                 neighbors++;
                         }
                     }
                     crop.neighbors = neighbors;
-                    Logger.Log(crop.crop + " plant at " + tileLocation.ToString() + " found " + neighbors + " neighbors.  Neighbors is now at " + crop.neighbors);
+                    //Logger.Log(crop.crop + " plant at " + tileLocation.ToString() + " found " + neighbors + " neighbors.  Neighbors is now at " + crop.neighbors);
                 }
-                if (crop.offSeason(environment, spoofedSeason))
+                if (!crop.isGrowingSeason(spoofedSeason, environment))
                     npk = new int[]{0,0,0};
             }
             //Weeds do not affect the crop the day they grow, so they are placed after the crop does its day update.
@@ -402,8 +578,80 @@ namespace Perennials
             }
         }
 
+        private void calculateAdjacency(Vector2 tileLocation, GameLocation location = null)
+        {
+            if (location is null)
+                location = Game1.currentLocation;
+            index1 = 0;
+            index2 = 0;
+            index3 = 0;
+            Vector2 key = tileLocation;
+            ++key.X;
+            if (location.terrainFeatures.ContainsKey(key) && Game1.currentLocation.terrainFeatures[key].GetType() == typeof(CropSoil))
+            {
+                if ((Game1.currentLocation.terrainFeatures[key] as CropSoil).height == height)
+                {
+                    index1 += 100;
+                    if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).hydrated == this.hydrated)
+                        index2 += 100;
+                    if (height == Lowered)
+                    {
+                        if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).flooded == this.flooded)
+                            index3 += 100;
+                    }
+                }
+            }
+            key.X -= 2f;
+            if (location.terrainFeatures.ContainsKey(key) && Game1.currentLocation.terrainFeatures[key].GetType() == typeof(CropSoil))
+            {
+                if ((Game1.currentLocation.terrainFeatures[key] as CropSoil).height == height)
+                {
+                    index1 += 10;
+                    if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).hydrated == this.hydrated)
+                        index2 += 10;
+                    if (height == Lowered)
+                    {
+                        if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).flooded == this.flooded)
+                            index3 += 10;
+                    }
+                }
+            }
+            ++key.X;
+            ++key.Y;
+            if (location.terrainFeatures.ContainsKey(key) && Game1.currentLocation.terrainFeatures[key].GetType() == typeof(CropSoil))
+            {
+                if ((Game1.currentLocation.terrainFeatures[key] as CropSoil).height == height)
+                {
+                    index1 += 500;
+                    if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).hydrated == this.hydrated)
+                        index2 += 500;
+                    if (height == Lowered)
+                    {
+                        if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).flooded == this.flooded)
+                            index3 += 500;
+                    }
+                }
+            }
+            key.Y -= 2f;
+            if (location.terrainFeatures.ContainsKey(key) && Game1.currentLocation.terrainFeatures[key].GetType() == typeof(CropSoil))
+            {
+                if ((Game1.currentLocation.terrainFeatures[key] as CropSoil).height == height)
+                {
+                    index1 += 1000;
+                    if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).hydrated == this.hydrated)
+                        index2 += 1000;
+                    if (height == Lowered)
+                    {
+                        if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).flooded == this.flooded)
+                            index3 += 1000;
+                    }
+                }
+            }
+        }
+
         public override bool tickUpdate(GameTime time, Vector2 tileLocation, GameLocation location)
         {
+
             if ((double)this.maxShake > 0.0)
             {
                 if (this.shakeLeft)
@@ -452,73 +700,10 @@ namespace Perennials
 
         public override void draw(SpriteBatch spriteBatch, Vector2 tileLocation)
         {
+            GameLocation location = Game1.currentLocation;
             if (flatTexture is null)
                 loadSprite();
-            int index1 = 0;
-            int index2 = 0;
-            int index3 = 0;
-            Vector2 key = tileLocation;
-            ++key.X;
-            if (Game1.currentLocation.terrainFeatures.ContainsKey(key) && Game1.currentLocation.terrainFeatures[key].GetType() == typeof(CropSoil))
-            {
-                if ((Game1.currentLocation.terrainFeatures[key] as CropSoil).height == height)
-                {
-                    index1 += 100;
-                    if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).hydrated == this.hydrated)
-                        index2 += 100;
-                    if (height == Lowered)
-                    {
-                        if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).flooded == this.flooded)
-                            index3 += 100;
-                    }
-                }
-            }
-            key.X -= 2f;
-            if (Game1.currentLocation.terrainFeatures.ContainsKey(key) && Game1.currentLocation.terrainFeatures[key].GetType() == typeof(CropSoil))
-            {
-                if ((Game1.currentLocation.terrainFeatures[key] as CropSoil).height == height)
-                {
-                    index1 += 10;
-                    if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).hydrated == this.hydrated)
-                        index2 += 10;
-                    if (height == Lowered)
-                    {
-                        if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).flooded == this.flooded)
-                            index3 += 10;
-                    }
-                }
-            }
-            ++key.X;
-            ++key.Y;
-            if (Game1.currentLocation.terrainFeatures.ContainsKey(key) && Game1.currentLocation.terrainFeatures[key].GetType() == typeof(CropSoil))
-            {
-                if ((Game1.currentLocation.terrainFeatures[key] as CropSoil).height == height)
-                {
-                    index1 += 500;
-                    if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).hydrated == this.hydrated)
-                        index2 += 500;
-                    if (height == Lowered)
-                    {
-                        if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).flooded == this.flooded)
-                            index3 += 500;
-                    }
-                }
-            }
-            key.Y -= 2f;
-            if (Game1.currentLocation.terrainFeatures.ContainsKey(key) && Game1.currentLocation.terrainFeatures[key].GetType() == typeof(CropSoil))
-            {
-                if ((Game1.currentLocation.terrainFeatures[key] as CropSoil).height == height)
-                {
-                    index1 += 1000;
-                    if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).hydrated == this.hydrated)
-                        index2 += 1000;
-                    if (height == Lowered)
-                    {
-                        if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).flooded == this.flooded)
-                            index3 += 1000;
-                    }
-                }
-            }
+            calculateAdjacency(tileLocation);
             int num1 = CropSoil.drawGuide[index1];
             int num2 = CropSoil.drawGuide[index2];
             int num3 = CropSoil.drawGuide[index3];
@@ -529,11 +714,45 @@ namespace Perennials
                 texture = lowTexture;
             else
                 texture = flatTexture;
-            spriteBatch.Draw(texture, Game1.GlobalToLocal(Game1.viewport, new Vector2(tileLocation.X * (float)Game1.tileSize, tileLocation.Y * (float)Game1.tileSize)), new Rectangle?(new Rectangle(num1 % 4 * 16, num1 / 4 * 16, 16, 16)), this.c, 0.0f, Vector2.Zero, (float)Game1.pixelZoom, SpriteEffects.None, 1E-08f);
-            if (flooded)
-                spriteBatch.Draw(texture, Game1.GlobalToLocal(Game1.viewport, new Vector2(tileLocation.X * (float)Game1.tileSize, tileLocation.Y * (float)Game1.tileSize)), new Rectangle?(new Rectangle(num3 % 4 * 16 + 128, num3 / 4 * 16, 16, 16)), this.c, 0.0f, Vector2.Zero, (float)Game1.pixelZoom, SpriteEffects.None, 1.2E-08f);
-            else if (hydrated)
-                spriteBatch.Draw(texture, Game1.GlobalToLocal(Game1.viewport, new Vector2(tileLocation.X * (float)Game1.tileSize, tileLocation.Y * (float)Game1.tileSize)), new Rectangle?(new Rectangle(num2 % 4 * 16 + 64, num2 / 4 * 16, 16, 16)), this.c, 0.0f, Vector2.Zero, (float)Game1.pixelZoom, SpriteEffects.None, 1.2E-08f);
+            spriteBatch.Draw(texture,
+                Game1.GlobalToLocal(Game1.viewport, new Vector2(tileLocation.X * (float)Game1.tileSize, tileLocation.Y * (float)Game1.tileSize)),
+                new Rectangle?(new Rectangle(num1 % 4 * 16, num1 / 4 * 16, 16, 16)),
+                this.c,
+                0.0f,
+                Vector2.Zero,
+                (float)Game1.pixelZoom,
+                SpriteEffects.None,
+                1E-08f
+            );
+            if(height == Lowered)
+            {
+                int leftCrop = index1 % 100 == 10 ? 0 : 8;
+                int rightCrop = index1 % 500 >= 100 ? 0 : 8;
+                int bottomCrop = index1 % 1000 >= 500 ? 0 : 8;
+                int topCrop = index1 >= 1000 ? 0 : 8;
+                spriteBatch.Draw(
+                    Game1.mouseCursors,
+                    Game1.GlobalToLocal(Game1.viewport, new Vector2(tileLocation.X * (float)Game1.tileSize, tileLocation.Y * (float)Game1.tileSize)),
+                    new Microsoft.Xna.Framework.Rectangle?(
+                        new Rectangle(
+                            leftCrop + location.waterAnimationIndex * 64,
+                            topCrop + 2064 + ((tileLocation.X + (tileLocation.Y + 1)) % 2 == 0 ? (location.waterTileFlip ? 128 : 0) : (location.waterTileFlip ? 0 : 128)),
+                            64 - (leftCrop + rightCrop),
+                            64 - (topCrop + bottomCrop)
+                    )),
+                    (Color)((NetFieldBase<Color, NetColor>)location.waterColor),
+                    0.0f,
+                    new Vector2(leftCrop * -1, topCrop * -1),
+                    1f,
+                    SpriteEffects.None,
+                    1.2E-08f
+                );
+                spriteBatch.Draw(texture, Game1.GlobalToLocal(Game1.viewport, new Vector2(tileLocation.X * (float)Game1.tileSize, tileLocation.Y * (float)Game1.tileSize)), new Rectangle?(new Rectangle(num3 % 4 * 16 + 128, num3 / 4 * 16, 16, 16)), this.c, 0.0f, Vector2.Zero, (float)Game1.pixelZoom, SpriteEffects.None, 1.4E-08f);
+            }
+            //if (flooded)
+            //    spriteBatch.Draw(texture, Game1.GlobalToLocal(Game1.viewport, new Vector2(tileLocation.X * (float)Game1.tileSize, tileLocation.Y * (float)Game1.tileSize)), new Rectangle?(new Rectangle(num3 % 4 * 16 + 128, num3 / 4 * 16, 16, 16)), this.c, 0.0f, Vector2.Zero, (float)Game1.pixelZoom, SpriteEffects.None, 1.2E-08f);
+            //else if (hydrated)
+            //    spriteBatch.Draw(texture, Game1.GlobalToLocal(Game1.viewport, new Vector2(tileLocation.X * (float)Game1.tileSize, tileLocation.Y * (float)Game1.tileSize)), new Rectangle?(new Rectangle(num2 % 4 * 16 + 64, num2 / 4 * 16, 16, 16)), this.c, 0.0f, Vector2.Zero, (float)Game1.pixelZoom, SpriteEffects.None, 1.2E-08f);
             if (weeds)
             {
                 int num4 = (int)tileLocation.X * 7 + (int)tileLocation.Y * 11;
@@ -549,10 +768,9 @@ namespace Perennials
                     (float)(((double)tileLocation.Y * (double)Game1.tileSize + (double)(Game1.tileSize / 2) + (((double)tileLocation.Y * 11.0 + (double)tileLocation.X * 7.0) % 10.0 - 5.0)) / 10000.0 / 2.1)
                 );
             }
-            if (crop != null)
-            {
-                crop.draw(spriteBatch, tileLocation, Color.White, shakeRotation);
-            }
+            if (crop == null)
+                return;
+            crop.draw(spriteBatch, tileLocation, Color.White, shakeRotation);
         }
 
         private SoilCrop getCrop(string which)
@@ -565,6 +783,18 @@ namespace Perennials
                 if (cropType.Equals("Bush"))
                 {
                     newCrop = new CropBush(which, height);
+                }
+                else if (cropType.Equals("Root"))
+                {
+                    newCrop = new CropRoot(which, height);
+                }
+                else if (cropType.Equals("Trellis"))
+                {
+                    newCrop = new CropTrellis(which, height);
+                }
+                else if (cropType.Equals("Sprawler"))
+                {
+                    newCrop = new CropSprawler(which, height);
                 }
                 else
                 {

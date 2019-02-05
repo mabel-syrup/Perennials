@@ -26,7 +26,9 @@ namespace Perennials
             Global.addType(new Fruit());
             Global.addHandler(new PerennialsHandler());
             CropSoil.populateDrawGuide();
+            CropSprawler.populateDrawGuide();
             CropBush.bushSprites = new Dictionary<string, Texture2D>();
+            CropSprawler.sprawlerSprites = new Dictionary<string, Texture2D>();
             CropSoil.flatTexture = helper.Content.Load<Texture2D>("assets/cropsoil_flat.png", ContentSource.ModFolder);
             CropSoil.highTexture = helper.Content.Load<Texture2D>("assets/cropsoil_raised.png", ContentSource.ModFolder);
             CropSoil.lowTexture = helper.Content.Load<Texture2D>("assets/cropsoil_lowered.png", ContentSource.ModFolder);
@@ -36,6 +38,7 @@ namespace Perennials
             SeedPacket.seeds = helper.Content.Load<Dictionary<string, string>>("data/Seeds.xnb", ContentSource.ModFolder);
             SoilCrop.cropDictionary = helper.Content.Load<Dictionary<string, string>>("data/Crops.xnb", ContentSource.ModFolder);
             Fruit.fruits = helper.Content.Load<Dictionary<string, string>>("data/Fruits.xnb", ContentSource.ModFolder);
+            PerennialsGlobal.initDictionaries();
             Helper.Events.GameLoop.DayStarted += SaveEvents_AfterLoad;
             Helper.Events.Input.ButtonPressed += DetectToolUse;
             Helper.Events.Display.MenuChanged += MenuEvents_MenuChanged;
@@ -61,6 +64,18 @@ namespace Perennials
                         Logger.Log("Could not find image file 'assets/bush/" + crop + ".png'!", LogLevel.Error);
                     }
                 }
+                else if (specialType.Equals("Sprawler"))
+                {
+                    Logger.Log("Loading sprawler sprite sheet for " + crop + "...");
+                    try
+                    {
+                        CropSprawler.sprawlerSprites[crop] = Helper.Content.Load<Texture2D>("assets/sprawler/" + crop + ".png", ContentSource.ModFolder);
+                    }
+                    catch (Microsoft.Xna.Framework.Content.ContentLoadException)
+                    {
+                        Logger.Log("Could not find image file 'assets/sprawler/" + crop + ".png'!", LogLevel.Error);
+                    }
+                }
             }
         }
 
@@ -83,6 +98,8 @@ namespace Perennials
             if (Game1.fadeToBlack)
                 return;
             if (!(Game1.currentLocation is Farm || (Game1.currentLocation.Name != null && Game1.currentLocation.name.Equals("Greenhouse"))))
+                return;
+            if (Game1.menuUp)
                 return;
             if(Game1.player.CurrentItem is SeedPacket)
             {
@@ -140,7 +157,7 @@ namespace Perennials
             {
                 //farmer.addItemByMenuIfNecessaryElseHoldUp(new Trowel());
                 //farmer.addItemByMenuIfNecessaryElseHoldUp(new Shovel());
-                farmer.addItemByMenuIfNecessaryElseHoldUp(new SeedPacket("Cauliflower", 28));
+                //farmer.addItemByMenuIfNecessaryElseHoldUp(new SeedPacket("Cauliflower", 28));
                 //farmer.addItemByMenuIfNecessaryElseHoldUp(new SeedPacket("Strawberry", 28));
                 //farmer.addItemByMenuIfNecessaryElseHoldUp(new UtilityWand());
                 //farmer.addItemByMenuIfNecessaryElseHoldUp(new Fruit("Blueberry", 5, Fruit.lowQuality));

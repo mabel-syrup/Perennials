@@ -26,12 +26,12 @@ namespace Perennials
         public List<int> growthStages;
         public List<int> regrowthStages;
         public List<string> seasonsToGrowIn;
-        private bool perennial;
+        public bool perennial;
         private bool tropical;
         private bool multiHarvest;
         private int daysBetweenHarvest;
-        private int rowInSpriteSheet;
-        private int columnInSpriteSheet;
+        public int rowInSpriteSheet;
+        public int columnInSpriteSheet;
         private double hydrationRequirement;
         public bool impassable = false;
         public bool shakable = true;
@@ -56,9 +56,9 @@ namespace Perennials
         public int regrowDaysToMature = 0;
 
         private int daysUntilHarvest = 0;
-        private double hydration;
+        public double hydration;
         public int neighbors;
-        private double weedless;
+        public double weedless;
         public int age;
         public int years = 0;
         public int heightOffset;
@@ -137,15 +137,6 @@ namespace Perennials
                 rowInSpriteSheet = Convert.ToInt32(cropData["parentSheetIndex"]);
                 columnInSpriteSheet = 0;
                 specialType = cropData["specialType"];
-                if (specialType.Equals("Trellis"))
-                {
-                    impassable = true;
-                    shakable = false;
-                }
-                //else if (specialType.Equals("Bush"))
-                //{
-                //    impassable = true;
-                //}
                 yearsToFruit = Convert.ToInt32(cropData["growthYears"]);
                 hydrationRequirement = (Convert.ToInt32(cropData["hydration"]) / 100);
                 //int parentSheetIndex = Convert.ToInt32(cropData["parentSheetIndex"]);
@@ -195,7 +186,7 @@ namespace Perennials
 
         public bool produceWeeds()
         {
-            if (specialType.Equals("Scythe"))
+            if (specialType.Equals("Scythe") || specialType.Equals("Bush"))
                 return false;
             weeds = true;
             return true;
@@ -206,31 +197,9 @@ namespace Perennials
             return specialType.Equals("Schythe");
         }
 
-        private bool finalPhase()
-        {
-            return regrowing ? currentPhase >= regrowthStages.Count - 1 : currentPhase >= growthStages.Count - 1;
-        }
-
-        private bool fruitingAge()
-        {
-            return regrowing ? currentPhase == regrowthStages.Count - 1 : currentPhase == growthStages.Count - 1;
-        }
-
-        public bool offSeason(GameLocation environment, string season = null)
-        {
-            if (season == null)
-                season = Game1.currentSeason;
-            return (perennial && !environment.Name.Equals("Greenhouse") && !seasonsToGrowIn.Contains(season));
-        }
-
-        public bool isSeed()
+        public virtual bool isSeed()
         {
             return getCurrentPhase() == 1 && !mature;
-        }
-
-        public bool isMature()
-        {
-            return regrowing ? currentPhase >= regrowthStages.Count - 2 : currentPhase >= growthStages.Count - 2;
         }
 
         public int getCurrentPhase()
@@ -244,6 +213,8 @@ namespace Perennials
                     growthSum += growthStage;
                     if (regrowMaturity > growthSum)
                         phase++;
+                    else
+                        break;
                 }
             }
             else
@@ -253,6 +224,8 @@ namespace Perennials
                     growthSum += growthStage;
                     if (seedMaturity > growthSum)
                         phase++;
+                    else
+                        break;
                 }
             }
             return phase;
@@ -263,55 +236,7 @@ namespace Perennials
             if (spoofSeason is null)
                 spoofSeason = Game1.currentSeason;
             int flipped = flip ? 1 : 0;
-            if (specialType == "Bush")
-            {
-                //Todo: Add special sprite selection logic for bushes
-                if (isGrowingSeason(spoofSeason))
-                {
-                    if (mature)
-                    {
-                        currentSprite = hasFruit ? 6 : 7;
-                    }
-                    else
-                    {
-                        currentSprite = getCurrentPhase();
-                    }
-                    return;
-                }
-                else
-                {
-                    if (mature)
-                    {
-                        int seasonSprite;
-                        switch (spoofSeason)
-                        {
-                            case "spring":
-                                seasonSprite = 0;
-                                break;
-                            case "summer":
-                                seasonSprite = 1;
-                                break;
-                            case "fall":
-                                seasonSprite = 2;
-                                break;
-                            case "winter":
-                                seasonSprite = 3;
-                                break;
-                            default:
-                                seasonSprite = 0;
-                                break;
-                        }
-                        currentSprite = 8 + seasonSprite;
-                        return;
-                    }
-                    else
-                    {
-                        currentSprite = getCurrentPhase();
-                        return;
-                    }
-                }
-            }
-            else if (specialType == "Trellis")
+            if (specialType == "Trellis")
             {
                 if (!isGrowingSeason(spoofSeason))
                 {
@@ -335,14 +260,6 @@ namespace Perennials
                             break;
                     }
                     currentSprite = 8 + seasonSprite + flipped;
-                    return;
-                }
-            }
-            else if (specialType == "Root")
-            {
-                if (!isGrowingSeason(spoofSeason))
-                {
-                    currentSprite = 8;
                     return;
                 }
             }
@@ -350,110 +267,7 @@ namespace Perennials
                 currentSprite = getCurrentPhase();
             else
                 currentSprite = 6 + (hasFruit ? 0 : 1);
-            Logger.Log("Updated sprite index for " + crop + ", sprite index is now " + currentSprite);
-        }
-
-        private void updateSpriteIndexDEPRECATED(string spoofSeason = null)
-        {
-            if (spoofSeason is null)
-                spoofSeason = Game1.currentSeason;
-            int flipped = flip ? 1 : 0;
-            if(specialType == "Bush")
-            {
-                if (seasonsToGrowIn.Contains(spoofSeason))
-                {
-                    if (regrowing && !fruitingAge())
-                    {
-                        currentSprite = currentPhase + 12;
-                    }
-                    else if (regrowing && fruitingAge())
-                    {
-                        if (hasFruit)
-                            currentSprite = 6;
-                        else
-                            currentSprite = 7;
-                    }
-                    else if (!regrowing && !fruitingAge())
-                        currentSprite = currentPhase + 1;
-                    else if (hasFruit)
-                        currentSprite = currentPhase + 1;
-                    else
-                        currentSprite = currentPhase + 2;
-                    return;
-                }
-                else
-                {
-                    if (hasMatured)
-                    {
-                        int seasonSprite;
-                        switch (spoofSeason)
-                        {
-                            case "spring":
-                                seasonSprite = 0;
-                                break;
-                            case "summer":
-                                seasonSprite = 1;
-                                break;
-                            case "fall":
-                                seasonSprite = 2;
-                                break;
-                            case "winter":
-                                seasonSprite = 3;
-                                break;
-                            default:
-                                seasonSprite = 0;
-                                break;
-                        }
-                        currentSprite = 8 + seasonSprite;
-                        return;
-                    }
-                    else
-                    {
-                        currentSprite = currentPhase + 1;
-                        return;
-                    }
-                }
-            }
-            else if (specialType == "Trellis")
-            {
-                if (!seasonsToGrowIn.Contains(spoofSeason))
-                {
-                    int seasonSprite;
-                    switch (spoofSeason)
-                    {
-                        case "spring":
-                            seasonSprite = 0;
-                            break;
-                        case "summer":
-                            seasonSprite = 2;
-                            break;
-                        case "fall":
-                            seasonSprite = 4;
-                            break;
-                        case "winter":
-                            seasonSprite = 6;
-                            break;
-                        default:
-                            seasonSprite = 0;
-                            break;
-                    }
-                    currentSprite = 8 + seasonSprite + flipped;
-                    return;
-                }
-            }
-            else if (specialType == "Root")
-            {
-                if (!seasonsToGrowIn.Contains(spoofSeason))
-                {
-                    currentSprite = 8;
-                }
-            }
-            if (!fruitingAge())
-                currentSprite = currentPhase + 1;
-            else if (hasFruit)
-                currentSprite = currentPhase + 1;
-            else
-                currentSprite = currentPhase + 2;
+            //Logger.Log("Updated sprite index for " + crop + ", sprite index is now " + currentSprite);
         }
 
         public bool isGrowingSeason(string season, GameLocation environment=null)
@@ -481,7 +295,7 @@ namespace Perennials
             //Logger.Log("Calculated for " + crop + ": " + seedDaysToMature + " seedDaysToMature, " + regrowDaysToMature + " regrowDaysToMature.");
         }
 
-        public void growFruit(string season)
+        public virtual void growFruit(string season)
         {
             //Even crops in greenhouses only fruit in their season.  Some crops can ONLY mature in the greenhouse, but still only fruit in their season.
             if (!isGrowingSeason(season))
@@ -641,7 +455,7 @@ namespace Perennials
                     dead = true;
                 }
             }
-            Logger.Log(report);
+            //Logger.Log(report);
             return grew;
         }
 
@@ -650,14 +464,14 @@ namespace Perennials
             //If the crop grew at all.
             if (grow(hydrated, flooded, xTile, yTile, environment, spoofSeason))
             {
-                Logger.Log("Grew " + crop + " by one day.");
+                //Logger.Log("Grew " + crop + " by one day.");
                 age++;
                 hydration = (((age - 1) * hydration) + (hydrated ? 1 : 0)) / age;
                 weedless = (((age - 1) * weedless) + (weeds ? 0 : 1)) / age;
             }
             else
             {
-                Logger.Log(crop + " did not grow today.");
+                //Logger.Log(crop + " did not grow today.");
                 age = 0;
                 hydration = 0f;
                 weedless = 1f;
@@ -666,94 +480,8 @@ namespace Perennials
             //report += " is " + (dead ? "dead." : (mature ? " " : "not ") + "mature, is " + (isSeed() ? "" : "not ") + "a seed" + (
             //    mature ? "" : ", is " + (dormant ? " regrowing, and " + regrowMaturity + "days regrown." : " growing from seed, and " + seedMaturity + "days grown.")));
             updateSpriteIndex(spoofSeason);
-            Logger.Log(reportCondition(spoofSeason));
+            //Logger.Log(reportCondition(spoofSeason));
             //Logger.Log(report);
-        }
-
-        public void newDayDEPRECATED(bool hydrated, bool flooded, int xTile, int yTile, GameLocation environment, string spoofSeason=null)
-        {
-            string season;
-            if (spoofSeason != null)
-                season = spoofSeason;
-            else
-                season = Game1.currentSeason;
-            seasonOffset = offsetForSeason(season);
-            if (regrowing && !hasMatured)
-                hasMatured = true;
-            if (fruitingAge() && daysBetweenHarvest > 0 && daysUntilHarvest > 0)
-                daysUntilHarvest--;
-            //No current crops survive flooding.  Todo: add rice, which thrives when flooded.
-            if (flooded)
-            {
-                dead = true;
-            }
-            //Plant is potentially able to survive being outside its growing conditions
-            else if ((tropical || perennial) && !seasonsToGrowIn.Contains(season) && !environment.name.Equals("Greenhouse") && !isSeed())
-            {
-                //Perennial that does not tolerate non-growing conditions is in non-growing conditions
-                if (perennial && !tropical)
-                {
-                    //if it reached maturity (at least the stage before fruiting), it will regrow quickly next growing season.
-                    if (isMature())
-                    {
-                        regrowing = true;
-                        years++;
-                        currentPhase = 0;
-                        dayOfCurrentPhase = 0;
-                        age = 0;
-                        hydration = 0f;
-                        weedless = 1f;
-                    }
-                    //If not, it has to go through its full growing period again.
-                    else
-                    {
-                        regrowing = false;
-                        currentPhase = 0;
-                        dayOfCurrentPhase = 0;
-                        age = 0;
-                        hydration = 0f;
-                        weedless = 1f;
-                    }
-                }
-                daysUntilHarvest = 0;
-            }
-            else if (isSeed() && !seasonsToGrowIn.Contains(season) && !environment.name.Equals("Greenhouse"))
-            {
-                //Seed is dormant; do nothing.
-            }
-            else if (specialType == "Root" && !seasonsToGrowIn.Contains(season) && !environment.name.Equals("Greenhouse"))
-            {
-                if (!hasMatured)
-                    dead = true;
-                else
-                {
-                    //Todo: some crops improve in quality after freezing?
-                }
-            }
-            else if (!environment.name.Equals("Greenhouse") && (dead || !seasonsToGrowIn.Contains(season)))
-            {
-                dead = true;
-            }
-            else
-            {
-                age++;
-                hydration = (((age - 1) * hydration) + (hydrated ? 1 : 0) ) / age;
-                weedless = (((age - 1) * weedless) + (weeds ? 0 : 1)) / age;
-                dayOfCurrentPhase++;
-                if (dayOfCurrentPhase >= daysForCurrentPhase() && !fruitingAge())
-                {
-                    currentPhase++;
-                    dayOfCurrentPhase = 0;
-                    if (currentPhase >= growthStages.Count - 2 && !hasMatured)
-                        hasMatured = true;
-                }
-                //Perennials grow, but do not produce fruit in a greenhouse. Todo: add a 'forcing' mechanic to cause perennials to fruit in the greenhouse?
-                if (fruitingAge() && (daysBetweenHarvest == 0 || daysUntilHarvest <= 0) && (!perennial || !environment.name.Equals("Greenhouse")))
-                {
-                    hasFruit = true;
-                }
-            }
-            updateSpriteIndex(season);
         }
 
         public int calculateQuality(StardewValley.Farmer who = null)
@@ -791,11 +519,11 @@ namespace Perennials
                 qualityLevel = Fruit.medQuality;
             else
                 qualityLevel = Fruit.lowQuality;
-            Logger.Log("Final quality decision: " + qualityLevel + ", from " + (int)quality + "/625 points.");
+            Logger.Log("Final quality decision: " + qualityLevel + ", from " + (int)quality + "/675 points.");
             return qualityLevel;
         }
 
-        public bool harvest(Vector2 tileLocation)
+        public virtual bool harvest(Vector2 tileLocation)
         {
             if (dead)
                 return true;
@@ -831,6 +559,7 @@ namespace Perennials
                     Game1.playSound("dwoop");
                     createFruitDebris(fruitItem, tileLocation);
                 }
+                float experience = (float)(16.0 * Math.Log(0.018 * fruitItem.price + 1.0, Math.E));
                 who.gainExperience(0, (int)Math.Round((double)0.5));
                 if (!multiHarvest)
                     return true;
@@ -857,9 +586,11 @@ namespace Perennials
             Game1.currentLocation.debris.Add(debris);
         }
 
-        private int daysForCurrentPhase()
+        public int daysForCurrentPhase()
         {
-            return regrowing ? regrowthStages[currentPhase] : growthStages[currentPhase];
+            if (mature)
+                return -1;
+            return dormant ? regrowthStages[getCurrentPhase()] : growthStages[getCurrentPhase()];
         }
 
         private int offsetForSeason(string season = null)
@@ -891,43 +622,18 @@ namespace Perennials
 
         public virtual void draw(SpriteBatch b, Vector2 tileLocation, Color toTint, float rotation)
         {
-            //b.Draw(cropSpriteSheet,
-            //    Game1.GlobalToLocal(Game1.viewport, new Vector2((float)((double)tileLocation.X * (double)Game1.tileSize + (this.raisedSeeds || finalPhase() ? 0.0 : ((double)tileLocation.X * 11.0 + (double)tileLocation.Y * 7.0) % 10.0 - 5.0)) + (float)(Game1.tileSize / 2), (float)((double)tileLocation.Y * (double)Game1.tileSize + (this.raisedSeeds || finalPhase() ? 0.0 : ((double)tileLocation.Y * 11.0 + (double)tileLocation.X * 7.0) % 10.0 - 5.0)) + (float)(Game1.tileSize / 2))),
-            //    new Rectangle?(this.getSourceRect((int)tileLocation.X * 7 + (int)tileLocation.Y * 11)),
-            //    toTint,
-            //    rotation,
-            //    new Vector2(8f, 24f),
-            //    (float)Game1.pixelZoom,
-            //    this.flip ? SpriteEffects.FlipHorizontally : SpriteEffects.None, 
-            //    (float)(((double)tileLocation.Y * (double)Game1.tileSize + (double)(Game1.tileSize / 2) + (this.raisedSeeds || finalPhase() ? 0.0 : ((double)tileLocation.Y * 11.0 + (double)tileLocation.X * 7.0) % 10.0 - 5.0)) / 10000.0 / (this.currentPhase != 0 || this.raisedSeeds ? 1.0 : 2.0))
-            //);
-            //if (this.tintColor.Equals(Color.White) || this.dead)
-            //    return;
-            //b.Draw(cropSpriteSheet,
-            //    Game1.GlobalToLocal(Game1.viewport, new Vector2((float)((double)tileLocation.X * (double)Game1.tileSize + (this.raisedSeeds || finalPhase() ? 0.0 : ((double)tileLocation.X * 11.0 + (double)tileLocation.Y * 7.0) % 10.0 - 5.0)) + (float)(Game1.tileSize / 2), (float)((double)tileLocation.Y * (double)Game1.tileSize + (this.raisedSeeds || finalPhase() ? 0.0 : ((double)tileLocation.Y * 11.0 + (double)tileLocation.X * 7.0) % 10.0 - 5.0)) + (float)(Game1.tileSize / 2))),
-            //    new Rectangle?(
-            //        new Rectangle(
-            //            (this.fullyGrown ? (this.dayOfCurrentPhase <= 0 ? 6 : 7) : this.currentPhase + 1 + 1) * 16 + (this.rowInSpriteSheet % 2 != 0 ? 128 : 0),
-            //            this.rowInSpriteSheet / 2 * 16 * 2, 16, 32
-            //        )
-            //    ),
-            //    this.tintColor, 
-            //    rotation, 
-            //    new Vector2(8f, 24f), 
-            //    (float)Game1.pixelZoom, 
-            //    this.flip ? SpriteEffects.FlipHorizontally : SpriteEffects.None, 
-            //    (float)(((double)tileLocation.Y * (double)Game1.tileSize + (double)(Game1.tileSize / 2) + (((double)tileLocation.Y * 11.0 + (double)tileLocation.X * 7.0) % 10.0 - 5.0)) / 10000.0 / (this.currentPhase != 0 || this.raisedSeeds ? 1.0 : 2.0))
-            //);
+            Vector2 local = Game1.GlobalToLocal(Game1.viewport, new Vector2((float)((double)tileLocation.X * (double)Game1.tileSize) + (float)(Game1.tileSize / 2), (float)((double)tileLocation.Y * (double)Game1.tileSize) + (Game1.tileSize / 2) - (Game1.tileSize * heightOffset / 4)));
+            float depth = (float)((tileLocation.Y * 64 + 4) + (tileLocation.Y * 11.0 + tileLocation.X * 7.0) % 10.0 - 5.0) / 10000f;
             b.Draw(cropSpriteSheet,
-                Game1.GlobalToLocal(Game1.viewport, new Vector2((float)((double)tileLocation.X * (double)Game1.tileSize) + (Game1.tileSize / 2), (float)((double)tileLocation.Y * (double)Game1.tileSize) + (Game1.tileSize / 2) - (Game1.tileSize * heightOffset / 4))),
+                local,
                 getSprite((int)tileLocation.X * 7 + (int)tileLocation.Y * 11),
                 toTint,
                 rotation,
                 new Vector2(8f, 24f),
                 (float)Game1.pixelZoom,
                 this.flip ? SpriteEffects.FlipHorizontally : SpriteEffects.None,
-                (float)(((double)tileLocation.Y * (double)Game1.tileSize + (double)(Game1.tileSize / 2) + (((double)tileLocation.Y * 11.0 + (double)tileLocation.X * 7.0) % 10.0 - 5.0)) / 10000.0 / (this.currentPhase != 0 || this.impassable || (specialType.Equals("Bush") && hasMatured) ? 1.0 : 2.0))
-            //(float)((double)tileLocation.Y * (double)Game1.tileSize + (double)(Game1.tileSize / 2))
+                depth
+                //(float)((double)tileLocation.Y * (double)Game1.tileSize + (double)(Game1.tileSize / 2))
             );
         }
 

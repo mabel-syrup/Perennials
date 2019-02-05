@@ -6,13 +6,128 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using StardewValley;
 using StardewValley.TerrainFeatures;
+using _SyrupFramework;
 using Netcode;
 
 namespace Perennials
 {
     public static class PerennialsGlobal
     {
+        private static Dictionary<Farmer, Boolean[]> farmerStates;
 
+        private static Dictionary<Farmer, int> farmerHeight;
+        private static Dictionary<Farmer, Boolean> farmerSubmerged;
+
+        private const int raise = 0;
+        private const int low = 0;
+        private const int swim = 0;
+
+        public static void initDictionaries()
+        {
+            if (farmerHeight is null)
+                farmerHeight = new Dictionary<Farmer, int>();
+            if (farmerSubmerged is null)
+                farmerSubmerged = new Dictionary<Farmer, bool>();
+        }
+
+        public static void raiseFarmerTo(Farmer who, int newHeight)
+        {
+            initFarmerValues(who);
+            raiseFarmerBy(who, heightDifference(who, newHeight));
+        }
+
+        public static int heightDifference(Farmer who, int newHeight)
+        {
+            initFarmerValues(who);
+            return newHeight - farmerHeight[who];
+        }
+
+        public static void raiseFarmerBy(Farmer who, int heightToRaise)
+        {
+            initFarmerValues(who);
+            who.position.Value = new Vector2(who.position.X, who.position.Y - heightToRaise);
+            farmerHeight[who] += heightToRaise;
+        }
+
+        public static void setFarmerHeight(Farmer who, int height)
+        {
+            initFarmerValues(who);
+            farmerHeight[who] = height;
+        }
+
+        public static void setFarmerSubmerged(Farmer who, bool submerged = true)
+        {
+            initFarmerState(who);
+            farmerSubmerged[who] = submerged;
+        }
+
+        public static int getFarmerHeight(Farmer who)
+        {
+            initFarmerValues(who);
+            return farmerHeight[who];
+        }
+
+        public static bool getFarmerSubmerged(Farmer who)
+        {
+            initFarmerValues(who);
+            return farmerSubmerged[who];
+        }
+
+        private static void initFarmerValues(Farmer who)
+        {
+            if (!farmerHeight.ContainsKey(who))
+                farmerHeight[who] = 0;
+            if (!farmerSubmerged.ContainsKey(who))
+                farmerSubmerged[who] = false;
+        }
+
+        public static void setFarmerRaised(Farmer who, bool raised = true)
+        {
+            if (!farmerStates.ContainsKey(who))
+                initFarmerState(who);
+            farmerStates[who][raise] = raised;
+        }
+
+        public static void setFarmerLowered(Farmer who, bool lowered = true)
+        {
+            if (!farmerStates.ContainsKey(who))
+                initFarmerState(who);
+            farmerStates[who][low] = lowered;
+        }
+
+        //public static void setFarmerSubmerged(Farmer who, bool submerged = true)
+        //{
+        //    if (!farmerStates.ContainsKey(who))
+        //        initFarmerState(who);
+        //    farmerStates[who][swim] = submerged;
+        //}
+
+        public static bool farmerRaised(Farmer who)
+        {
+            if (!farmerStates.ContainsKey(who))
+                initFarmerState(who);
+            return farmerStates[who][raise];
+        }
+
+        public static bool farmerLowered(Farmer who)
+        {
+            if (!farmerStates.ContainsKey(who))
+                initFarmerState(who);
+            return farmerStates[who][low];
+        }
+
+        //public static bool farmerSubmerged(Farmer who)
+        //{
+        //    if (!farmerStates.ContainsKey(who))
+        //        initFarmerState(who);
+        //    return farmerStates[who][swim];
+        //}
+
+        private static void initFarmerState(Farmer who)
+        {
+            if (!farmerStates.ContainsKey(who))
+                farmerStates[who] = new Boolean[] { false, false, false };
+        }
 
         public static void processWeeds(string season = null)
         {
@@ -65,6 +180,8 @@ namespace Perennials
             {
                 if (farm.terrainFeatures.ContainsKey(tileLocation))
                     farm.terrainFeatures.Remove(tileLocation);
+                if (farm.objects.ContainsKey(tileLocation))
+                    continue;
                 farm.objects.Add(tileLocation, new StardewValley.Object(tileLocation, forageTiles[tileLocation], "weeds", true, true, false, true));
             }
         }

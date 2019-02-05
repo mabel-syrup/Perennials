@@ -11,7 +11,7 @@ using StardewValley;
 
 namespace Perennials
 {
-    public class CropBush : SoilCrop, IModdedItem
+    public class CropBush : SoilCrop
     {
 
         public static Dictionary<string, Texture2D> bushSprites;
@@ -124,8 +124,13 @@ namespace Perennials
                     }
                 }
             }
-            Logger.Log(report);
+            //Logger.Log(report);
             return grew;
+        }
+
+        public override bool isSeed()
+        {
+            return (!dormant && !mature && getCurrentPhase() == 1);
         }
 
         public override void updateSpriteIndex(string spoofSeason = null)
@@ -133,7 +138,7 @@ namespace Perennials
             if (!mature && !dormant)
             {
                 //Still growing up, so we'll use the growing sprites.
-                currentSprite = getCurrentPhase() - 1;
+                currentSprite = getCurrentPhase() - 2;
             }
             else
             {
@@ -164,54 +169,62 @@ namespace Perennials
 
         public override Rectangle getSprite(int number = 0)
         {
-            if(isSeed() && !dormant)
+            if(isSeed())
             {
                 //Returns either the top or bottom seed sprite.
-                return new Rectangle(80, (number % 2) * 32, 16, 32);
+                return new Rectangle(160, (number % 2) * 32, 32, 32);
             }
             //Returns the current sprite index, offset by season.
-            return new Rectangle(currentSprite * 16, seasonalSpriteRow * 32, 16, 32);
+            return new Rectangle(currentSprite * 32, seasonalSpriteRow * 32, 32, 32);
         }
 
         public override void draw(SpriteBatch b, Vector2 tileLocation, Color toTint, float rotation)
         {
+            Vector2 local = Game1.GlobalToLocal(Game1.viewport, new Vector2((float)((double)tileLocation.X * (double)Game1.tileSize) + (float)(Game1.tileSize / 2), (float)((double)tileLocation.Y * (double)Game1.tileSize) + (Game1.tileSize / 2) - (Game1.tileSize * heightOffset / 4)));
+            float depth = (float)((tileLocation.Y * 64 + 32) + (tileLocation.Y * 11.0 + tileLocation.X * 7.0) % 10.0 - 5.0) / 10000f;
+            
             b.Draw(bushSpriteSheet,
-                Game1.GlobalToLocal(Game1.viewport, new Vector2((float)((double)tileLocation.X * (double)Game1.tileSize) + (Game1.tileSize / 2), (float)((double)tileLocation.Y * (double)Game1.tileSize) + (Game1.tileSize / 2) - (Game1.tileSize * heightOffset / 4))),
+                local,
                 getSprite((int)tileLocation.X * 7 + (int)tileLocation.Y * 11),
                 toTint,
                 rotation,
-                new Vector2(8f, 24f),
+                new Vector2(16f, 24f),
                 (float)Game1.pixelZoom,
                 this.flip ? SpriteEffects.FlipHorizontally : SpriteEffects.None,
-                (float)(((double)tileLocation.Y * 64.0 + 32.0 + (((double)tileLocation.Y * 11.0 + (double)tileLocation.X * 7.0) % 10.0 - 5.0)) / 10000.0 / (!isSeed() ? 1.0 : 2.0))
+                depth
+                //(float)((tileLocation.Y * 64.0 + 32.0 + ((tileLocation.Y * 11.0 + tileLocation.X * 7.0) % 10.0 - 5.0)) / 10000.0 / ((!mature && seedMaturity <= growthStages[0]) ? 2.0 : 1.0))
             //(float)(((double)tileLocation.Y + 0.670000016689301) * 64.0 / 10000.0 + (double)tileLocation.X * 9.99999974737875E-06)
             //(float)(((double)tileLocation.Y * (double)Game1.tileSize + (double)(Game1.tileSize / 2) + (((double)tileLocation.Y * 11.0 + (double)tileLocation.X * 7.0) % 10.0 - 5.0)) / 10000.0 / (this.currentPhase != 0 || this.impassable || (specialType.Equals("Bush") && hasMatured) ? 1.0 : 2.0))
             //(float)((double)tileLocation.Y * (double)Game1.tileSize + (double)(Game1.tileSize / 2))
             );
             if (hasFruit)
             {
+                //Draw the fruit overlay
                 b.Draw(bushSpriteSheet,
-                    Game1.GlobalToLocal(Game1.viewport, new Vector2((float)((double)tileLocation.X * (double)Game1.tileSize) + (Game1.tileSize / 2), (float)((double)tileLocation.Y * (double)Game1.tileSize) + (Game1.tileSize / 2) - (Game1.tileSize * heightOffset / 4))),
-                    new Rectangle(80, 96, 16, 32),
+                    local,
+                    new Rectangle(160, 96, 32, 32),
                     toTint,
                     rotation,
-                    new Vector2(8f, 24f),
+                    new Vector2(16f, 24f),
                     (float)Game1.pixelZoom,
                     this.flip ? SpriteEffects.FlipHorizontally : SpriteEffects.None,
-                    (float)(((double)tileLocation.Y * 64.0 + 32.0 + (((double)tileLocation.Y * 11.0 + (double)tileLocation.X * 7.0) % 10.0 - 5.0)) / 10000.0 / 0.95)
+                    depth + (32 / 10000f)
+                 //(float)(((double)tileLocation.Y * 64.0 + 32.0 + (((double)tileLocation.Y * 11.0 + (double)tileLocation.X * 7.0) % 10.0 - 5.0)) / 10000.0 / (1 - float.MinValue))
                  );
             }
             else if (!mature && dormant && age > 0 && age < regrowthStages[0])
             {
+                //Draw the flower overlay
                 b.Draw(bushSpriteSheet,
-                    Game1.GlobalToLocal(Game1.viewport, new Vector2((float)((double)tileLocation.X * (double)Game1.tileSize) + (Game1.tileSize / 2), (float)((double)tileLocation.Y * (double)Game1.tileSize) + (Game1.tileSize / 2) - (Game1.tileSize * heightOffset / 4))),
-                    new Rectangle(80, 64, 16, 32),
+                    local,
+                    new Rectangle(160, 64, 32, 32),
                     toTint,
-                    rotation,
-                    new Vector2(8f, 24f),
+                    rotation * 1.25f,
+                    new Vector2(16f, 24f),
                     (float)Game1.pixelZoom,
                     this.flip ? SpriteEffects.FlipHorizontally : SpriteEffects.None,
-                    (float)(((double)tileLocation.Y * 64.0 + 32.0 + (((double)tileLocation.Y * 11.0 + (double)tileLocation.X * 7.0) % 10.0 - 5.0)) / 10000.0 / 0.95)
+                    depth + (32 / 10000f)
+                 //(float)(((double)tileLocation.Y * 64.0 + 32.0 + (((double)tileLocation.Y * 11.0 + (double)tileLocation.X * 7.0) % 10.0 - 5.0)) / 10000.0 / (1 - float.MinValue))
                  );
             }
         }
