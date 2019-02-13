@@ -570,7 +570,12 @@ namespace Perennials
             return false;
         }
 
-        private void createFruitDebris(StardewValley.Object fruitItem, Vector2 tileLocation, float velocityMultiplier=1f)
+        public virtual void beforeDestroy()
+        {
+
+        }
+
+        public void createFruitDebris(StardewValley.Object fruitItem, Vector2 tileLocation, float velocityMultiplier=1f)
         {
             Debris debris = new Debris(fruitItem, new Vector2((float)(tileLocation.X * Game1.tileSize + Game1.tileSize / 2), (float)(tileLocation.Y * Game1.tileSize + Game1.tileSize / 2)))
             {

@@ -67,11 +67,15 @@
     <Compile Include="Items\SeedPacket.cs" />
     <Compile Include="SeedPacketOld.cs" />
     <Compile Include="TerrainFeatures\Sprawl.cs" />
+    <Compile Include="TerrainFeatures\Trees\Tree.cs" />
+    <Compile Include="TerrainFeatures\Trees\WhiteOak.cs" />
+    <Compile Include="Tools\MagnifyingGlass.cs" />
     <Compile Include="Tools\SeedPacketNew.cs" />
     <Compile Include="Tools\Shovel.cs" />
     <Compile Include="TerrainFeatures\SoilCrop.cs" />
     <Compile Include="Tools\Trowel.cs" />
     <Compile Include="Tools\UtilityWand.cs" />
+    <Compile Include="TreeComponent.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="manifest.json" />

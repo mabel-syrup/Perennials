@@ -25,6 +25,8 @@ namespace Perennials
 
         public List<Sprawl> sprawlTiles;
 
+        private bool harvestFinished = false;
+
         public CropSprawler(string cropName, int heightOffset = 0) : base(cropName, heightOffset)
         {
             Logger.Log("CropSprawler was created!");
@@ -186,10 +188,82 @@ namespace Perennials
                 Sprawl tile = ranks[orderedRanks[i]];
                 fruitReport += "\nAdding fruit to #" + (i + 1) + " ranked tile, (" + tile.tileLocation.X + ", " + tile.tileLocation.Y + ")";
                 tile.hasFruit = true;
+                tile.setInteractive(true);
             }
             fruitReport += "\nFinished fruit processing.";
             hasFruit = true;
             Logger.Log(fruitReport);
+        }
+
+        public override void beforeDestroy()
+        {
+            destroySprawl(sprawlTiles);
+        }
+
+        public bool harvestFruit(Sprawl sprawl)
+        {
+            if (!mature)
+                return false;
+            StardewValley.Farmer who = Game1.player;
+            int qualityLevel = calculateQuality(who);
+            StardewValley.Object fruitItem = new Fruit(crop, 1, qualityLevel);
+
+            if (!who.addItemToInventoryBool(fruitItem))
+            {
+                Game1.showRedMessage(Game1.content.LoadString("Strings\\StringsFromCSFiles:Crop.cs.588"));
+                return false;
+            }
+            sprawl.hasFruit = false;
+            Game1.playSound("harvest");
+            Game1.player.animateOnce(279 + Game1.player.facingDirection);
+            Game1.player.canMove = false;
+            Game1.currentLocation.temporarySprites.Add(new TemporaryAnimatedSprite(17, new Vector2(sprawl.tileLocation.X * (float)Game1.tileSize, sprawl.tileLocation.Y * (float)Game1.tileSize), Color.White, 7, Game1.random.NextDouble() < 0.5, 125f, 0, -1, -1f, -1, 0));
+            Game1.currentLocation.temporarySprites.Add(new TemporaryAnimatedSprite(14, new Vector2(sprawl.tileLocation.X * (float)Game1.tileSize, sprawl.tileLocation.Y * (float)Game1.tileSize), Color.White, 7, Game1.random.NextDouble() < 0.5, 50f, 0, -1, -1f, -1, 0));
+            float experience = (float)(16.0 * Math.Log(0.018 * fruitItem.price + 1.0, Math.E));
+            who.gainExperience(0, (int)Math.Round((double)0.5));
+
+            //Check if there's any fruit left on the vine
+
+            harvestFinished = true;
+            foreach(Sprawl sprawlTile in sprawlTiles)
+            {
+                if (sprawlTile.hasFruit)
+                    harvestFinished = false;
+            }
+
+            if (harvestFinished)
+                destroySprawl(sprawlTiles);
+            return true;
+        }
+
+        public override bool harvest(Vector2 tileLocation)
+        {
+            return harvestFinished;
+        }
+
+        public void destroySprawl(Sprawl sprawlToDestroy)
+        {
+            if (sprawlTiles.Contains(sprawlToDestroy))
+                sprawlTiles.Remove(sprawlToDestroy);
+            if (Game1.currentLocation.objects.ContainsKey(sprawlToDestroy.tileLocation))
+                Game1.currentLocation.objects.Remove(sprawlToDestroy.tileLocation);
+        }
+
+        private void destroySprawl(List<Sprawl> sprawlToDestroy)
+        {
+            //The killed off sprawl need to be put in a new list, in case this is fed the list of sprawl tiles itself.
+            List<Sprawl> sprawlToRemove = new List<Sprawl>();
+            foreach(Sprawl sprawl in sprawlToDestroy)
+            {
+                if (sprawlTiles.Contains(sprawl))
+                    sprawlToRemove.Add(sprawl);
+                if (Game1.currentLocation.objects.ContainsKey(sprawl.tileLocation))
+                    Game1.currentLocation.objects.Remove(sprawl.tileLocation);
+            }
+            foreach(Sprawl sprawl in sprawlToRemove)
+            {
+                sprawlTiles.Remove(sprawl);
+            }
         }
 
         public override bool grow(bool hydrated, bool flooded, int xTile, int yTile, GameLocation environment, string spoofSeason = null)
@@ -240,7 +314,7 @@ namespace Perennials
                         spreadProgress = 0;
                     }
                     report += ". It is now " + regrowMaturity + " days into its second growth phase, out of " + regrowDaysToMature + " needed to mature";
-                    if(regrowMaturity >= regrowthStages[1])
+                    if(regrowMaturity >= regrowthStages[2] + regrowthStages[1] + regrowthStages[0])
                     {
                         growFruit(spoofSeason);
                     }
@@ -360,23 +434,24 @@ namespace Perennials
 
         public override void updateSpriteIndex(string spoofSeason = null)
         {
-            if (!spreading && !mature)
-                currentSprite = getCurrentPhase();
+            currentSprite = getCurrentPhase();
             currentFruitSprite = getCurrentFruit();
         }
 
         public int getCurrentFruit()
         {
-            int phase = -1;
+            int phase = -2;
             int growthSum = 0;
             foreach (int growthStage in regrowthStages)
             {
                 growthSum += growthStage;
-                if (regrowMaturity > growthSum)
+                if (regrowMaturity >= growthSum)
                     phase++;
                 else
                     break;
             }
+            if (mature)
+                return regrowthStages.Count - 2;
             return phase;
         }
 
@@ -385,16 +460,21 @@ namespace Perennials
             if (isSeed())
             {
                 //Returns either the top or bottom seed sprite.
-                return new Rectangle(0, (number % 2) * 32 + 32, 16, 32);
+                return new Rectangle(0, (number % 2) * 16 + 32, 16, 16);
             }
             //Returns the current sprite.
-            return new Rectangle((currentSprite - 1) * 16, 0, 16, 32);
+            return new Rectangle((currentSprite - 2) * 16, 0, 16, 32);
         }
 
         private Rectangle getFruitSprite()
         {
             //Returns the current sprite.
-            return new Rectangle((currentFruitSprite + 2) * 16, 0, 16, 32);
+            return new Rectangle((currentFruitSprite + 1) * 16, 0, 16, 32);
+        }
+
+        private Rectangle getLeavesSprite(int num)
+        {
+            return new Rectangle(0, 64 + (num % 2) * 16, 16, 16);
         }
 
         private Rectangle getSprawlSprite(int adjacency, bool flip = false)
@@ -416,6 +496,29 @@ namespace Perennials
             return ((left && right) || (!left && !right)) ? num % 2 == 0 : false;
         }
 
+        private void drawLeaves(SpriteBatch b, Vector2 tileLocation, Color toTint, float rotation, bool flip, int adjacency)
+        {
+            //I don't like the way the leaves are rendered, and I'm going to change it entirely.
+            return;
+            //Draw leaves
+            b.Draw(
+                sprawlerSpriteSheet,
+                Game1.GlobalToLocal(
+                    Game1.viewport,
+                    new Vector2((float)((double)tileLocation.X * (double)Game1.tileSize) + (float)(Game1.tileSize / 2),
+                    (float)((double)tileLocation.Y * (double)Game1.tileSize) + (Game1.tileSize / 2) - (Game1.tileSize * heightOffset / 4))
+                ),
+                getLeavesSprite((int)tileLocation.X * 7 + (int)tileLocation.Y * 11),
+                toTint,
+                rotation,
+                new Vector2(8f, 8f),
+                (float)Game1.pixelZoom,
+                flip ? SpriteEffects.FlipHorizontally : SpriteEffects.None,
+                (float)((tileLocation.Y * 64 + 32) + (tileLocation.Y * 11.0 + tileLocation.X * 7.0) % 10.0 - 5.0) / 10000f
+            //(float)((double)tileLocation.Y * (double)Game1.tileSize + (double)(Game1.tileSize / 2))
+            );
+        }
+
         public override void draw(SpriteBatch b, Vector2 tileLocation, Color toTint, float rotation)
         {
             Vector2 local = Game1.GlobalToLocal(Game1.viewport, new Vector2((float)((double)tileLocation.X * (double)Game1.tileSize) + (float)(Game1.tileSize / 2), (float)((double)tileLocation.Y * (double)Game1.tileSize) + (Game1.tileSize / 2) - (Game1.tileSize * heightOffset / 4)));
@@ -427,7 +530,7 @@ namespace Perennials
                 getSprite((int)tileLocation.X * 7 + (int)tileLocation.Y * 11),
                 toTint,
                 rotation,
-                new Vector2(8f, 24f),
+                new Vector2(8f, isSeed() ? 8f : 24f),
                 (float)Game1.pixelZoom,
                 this.flip ? SpriteEffects.FlipHorizontally : SpriteEffects.None,
                 depth
@@ -449,7 +552,8 @@ namespace Perennials
                 depth
                 //(float)((double)tileLocation.Y * (double)Game1.tileSize + (double)(Game1.tileSize / 2))
                 );
-                foreach(Sprawl sprawl in sprawlTiles)
+                drawLeaves(b, tileLocation, toTint, rotation, flip, 0);
+                foreach (Sprawl sprawl in sprawlTiles)
                 {
                     int sprawlAdj = calculateAdjacency(sprawl.tileLocation, tileLocation, Game1.currentLocation);
                     bool sprawlFlip = ((((int)sprawl.tileLocation.X + drawGuide[sprawlAdj] % 7) * 7 + ((int)sprawl.tileLocation.Y + drawGuide[sprawlAdj] % 5) * 11) % 2) == 0;
@@ -468,6 +572,7 @@ namespace Perennials
                     (float)((sprawl.tileLocation.Y * 64 + 4) + (sprawl.tileLocation.Y * 11.0 + sprawl.tileLocation.X * 7.0) % 10.0 - 5.0) / 10000f
                     //(float)((double)tileLocation.Y * (double)Game1.tileSize + (double)(Game1.tileSize / 2))
                     );
+                    drawLeaves(b, sprawl.tileLocation, toTint, rotation, sprawlFlip, 0);
                     if (sprawl.hasFruit)
                     {
                         //Draw fruit.

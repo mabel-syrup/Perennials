@@ -356,6 +356,7 @@ namespace Perennials
                 else
                     Game1.player.currentLocation.temporarySprites.Add(new TemporaryAnimatedSprite(50, tileLocation * (float)Game1.tileSize, crop.dead ? new Color(207, 193, 43) : Color.ForestGreen, 8, false, 100f, 0, -1, -1f, -1, 0));
             }
+            crop.beforeDestroy();
             crop = null;
             npk = new int[] { 0, 0, 0 };
         }

@@ -18,32 +18,69 @@ namespace Perennials
 
         public override void Entry(IModHelper helper)
         {
+            //Register items for saving
             Global.addType(new Shovel());
             Global.addType(new Trowel());
             Global.addType(new CropSoil());
             Global.addType(new SeedPacket());
             Global.addType(new UtilityWand());
             Global.addType(new Fruit());
+            Global.addType(new Tree());
+
+            //Register this mod's handler for modded saving events
             Global.addHandler(new PerennialsHandler());
+
+            //Populate draw guides
             CropSoil.populateDrawGuide();
             CropSprawler.populateDrawGuide();
+
+            //Initialize spritesheet dictionaries
             CropBush.bushSprites = new Dictionary<string, Texture2D>();
             CropSprawler.sprawlerSprites = new Dictionary<string, Texture2D>();
+            Tree.trunkSheets = new Dictionary<string, Texture2D>();
+
+            //Load spritesheets
             CropSoil.flatTexture = helper.Content.Load<Texture2D>("assets/cropsoil_flat.png", ContentSource.ModFolder);
             CropSoil.highTexture = helper.Content.Load<Texture2D>("assets/cropsoil_raised.png", ContentSource.ModFolder);
             CropSoil.lowTexture = helper.Content.Load<Texture2D>("assets/cropsoil_lowered.png", ContentSource.ModFolder);
             SeedPacket.parentSheet = helper.Content.Load<Texture2D>("assets/seed_packets.png", ContentSource.ModFolder);
             SoilCrop.cropSpriteSheet = helper.Content.Load<Texture2D>("assets/crops_new.png", ContentSource.ModFolder);
             Fruit.fruitSheet = helper.Content.Load<Texture2D>("assets/fruits.png", ContentSource.ModFolder);
+
+            //Load xnb files
             SeedPacket.seeds = helper.Content.Load<Dictionary<string, string>>("data/Seeds.xnb", ContentSource.ModFolder);
             SoilCrop.cropDictionary = helper.Content.Load<Dictionary<string, string>>("data/Crops.xnb", ContentSource.ModFolder);
             Fruit.fruits = helper.Content.Load<Dictionary<string, string>>("data/Fruits.xnb", ContentSource.ModFolder);
+
+            //Initialize player height dictionaries
             PerennialsGlobal.initDictionaries();
+
+            //Add handlers for events
             Helper.Events.GameLoop.DayStarted += SaveEvents_AfterLoad;
             Helper.Events.Input.ButtonPressed += DetectToolUse;
             Helper.Events.Display.MenuChanged += MenuEvents_MenuChanged;
+
+            //Load the sprite sheets for specialized crops
             loadCropData();
+
+            //Load the sprite sheets for trees
+            loadTreeData();
             //Helper.Events.Display.RenderingActiveMenu += MenuEvents_MenuChanged;
+        }
+
+        private void loadTreeData()
+        {
+            //For testing purposes, only loads the white oak
+            string treeID = "whiteoak";
+            Logger.Log("Loading trunk sprite sheet for " + treeID + "...");
+            try
+            {
+                Tree.trunkSheets[treeID] = Helper.Content.Load<Texture2D>("assets/tree/" + treeID + "/trunk.png", ContentSource.ModFolder);
+            }
+            catch (Microsoft.Xna.Framework.Content.ContentLoadException)
+            {
+                Logger.Log("Could not find image file 'assets/tree/" + treeID + "/trunk.png'!", LogLevel.Error);
+            }
         }
 
         private void loadCropData()

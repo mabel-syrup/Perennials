@@ -60,6 +60,11 @@ namespace Perennials
                         Logger.Log("Weeding was " + (((CropSoil)feature).weeds ? "unsuccessful." : "successful."));
                     }
                 }
+                else
+                {
+                    Tree tree = new WhiteOak();
+                    location.terrainFeatures[index] = tree;
+                }
             }
             Logger.Log("Used trowel");
 
