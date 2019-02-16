@@ -198,9 +198,77 @@ namespace Perennials
                     soil.dayUpdate(farm, position, spoofSeason);
                 }
             }
+            equalizeDitches(farm);
+        }
+
+        private static bool tryMerge(ref List<MultiTileDitch> mergedDitches, MultiTileDitch ditch)
+        {
+            foreach (MultiTileDitch mergedDitch in mergedDitches)
+            {
+                if (mergedDitch.shouldMerge(ditch))
+                {
+                    Logger.Log("Mergeable ditch found.  Merging...");
+                    mergedDitch.merge(ditch);
+                    return true;
+                }
+            }
+            Logger.Log("Ditch should not merge.");
+            return false;
+        }
+
+        private static bool addToExisting(List<MultiTileDitch> ditches, Vector2 tileLocation)
+        {
+            foreach (MultiTileDitch ditch in ditches)
+            {
+                if (ditch.isConnected(tileLocation))
+                {
+                    ditch.addTile(tileLocation);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static List<MultiTileDitch> findDitches(GameLocation location)
+        {
+            Logger.Log("Finding ditches...");
+            List<MultiTileDitch> ditches = new List<MultiTileDitch>();
+            foreach (Vector2 tileLocation in location.terrainFeatures.Keys)
+            {
+                if ((location.terrainFeatures[tileLocation] is CropSoil && ((CropSoil)location.terrainFeatures[tileLocation]).height == CropSoil.Lowered) || (location.terrainFeatures[tileLocation] is ILiquidContainer && !(location.terrainFeatures[tileLocation] is CropSoil)))
+                {
+                    bool added = addToExisting(ditches, tileLocation);
+                    if (!added)
+                        ditches.Add(new MultiTileDitch(tileLocation));
+                }
+            }
+            Logger.Log("Found " + ditches.Count + " ditches.  Merging...");
+            List<MultiTileDitch> mergedDitches = new List<MultiTileDitch>();
+            foreach (MultiTileDitch ditch in ditches)
+            {
+                if (!tryMerge(ref mergedDitches, ditch))
+                    mergedDitches.Add(ditch);
+            }
+            Logger.Log("Merged into " + mergedDitches.Count + " total ditches.");
+            return mergedDitches;
         }
 
         public static void equalizeDitches(GameLocation location)
+        {
+            if (location == null)
+                location = Game1.getFarm();
+            Logger.Log("Equalizing ditches...");
+            List<MultiTileDitch> mergedDitches = findDitches(location);
+            foreach(MultiTileDitch ditch in mergedDitches)
+            {
+                int waterLevel = ditch.getWaterContent(location);
+                int average = waterLevel / ditch.getSize();
+                Logger.Log("Found an average water level of " + average + " for a ditch of size " + ditch.getSize() + " with a total water amount of " + waterLevel);
+                ditch.setWaterLevels(location, average);
+            }
+        }
+
+        public static void equalizeDitchesOld(GameLocation location)
         {
             if (location == null)
                 location = Game1.getFarm();

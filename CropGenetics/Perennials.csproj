@@ -52,6 +52,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ILiquidContainer.cs" />
+    <Compile Include="Irrigator.cs" />
+    <Compile Include="Items\Spigot.cs" />
+    <Compile Include="StepSoundHelper.cs" />
     <Compile Include="TerrainFeatures\CropBush.cs" />
     <Compile Include="TerrainFeatures\CropRoot.cs" />
     <Compile Include="TerrainFeatures\CropScythe.cs" />
@@ -66,6 +70,8 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Items\SeedPacket.cs" />
     <Compile Include="SeedPacketOld.cs" />
+    <Compile Include="TerrainFeatures\IrrigationBridge.cs" />
+    <Compile Include="TerrainFeatures\MultiTileDitch.cs" />
     <Compile Include="TerrainFeatures\Sprawl.cs" />
     <Compile Include="TerrainFeatures\Trees\Tree.cs" />
     <Compile Include="TerrainFeatures\Trees\WhiteOak.cs" />

@@ -59,6 +59,11 @@ namespace Perennials
                         ((CropSoil)feature).weeds = false;
                         Logger.Log("Weeding was " + (((CropSoil)feature).weeds ? "unsuccessful." : "successful."));
                     }
+                    if(feature is CropSoil && (feature as CropSoil).height == CropSoil.Lowered)
+                    {
+                        IrrigationBridge bridge = new IrrigationBridge();
+                        location.terrainFeatures[index] = bridge;
+                    }
                 }
                 else
                 {

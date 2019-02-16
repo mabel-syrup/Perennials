@@ -26,13 +26,16 @@ namespace Perennials
             Global.addType(new UtilityWand());
             Global.addType(new Fruit());
             Global.addType(new Tree());
+            Global.addType(new Spigot());
 
             //Register this mod's handler for modded saving events
             Global.addHandler(new PerennialsHandler());
+            StepSoundHelper.getSounds();
 
             //Populate draw guides
             CropSoil.populateDrawGuide();
             CropSprawler.populateDrawGuide();
+            IrrigationBridge.populateDrawGuide();
 
             //Initialize spritesheet dictionaries
             CropBush.bushSprites = new Dictionary<string, Texture2D>();
@@ -46,6 +49,7 @@ namespace Perennials
             SeedPacket.parentSheet = helper.Content.Load<Texture2D>("assets/seed_packets.png", ContentSource.ModFolder);
             SoilCrop.cropSpriteSheet = helper.Content.Load<Texture2D>("assets/crops_new.png", ContentSource.ModFolder);
             Fruit.fruitSheet = helper.Content.Load<Texture2D>("assets/fruits.png", ContentSource.ModFolder);
+            IrrigationBridge.spriteSheet = helper.Content.Load<Texture2D>("TerrainFeatures/Flooring", ContentSource.GameContent);
 
             //Load xnb files
             SeedPacket.seeds = helper.Content.Load<Dictionary<string, string>>("data/Seeds.xnb", ContentSource.ModFolder);
@@ -192,6 +196,7 @@ namespace Perennials
         {
             foreach(StardewValley.Farmer farmer in Game1.getAllFarmers())
             {
+                farmer.addItemByMenuIfNecessaryElseHoldUp(new Spigot(Vector2.Zero));
                 //farmer.addItemByMenuIfNecessaryElseHoldUp(new Trowel());
                 //farmer.addItemByMenuIfNecessaryElseHoldUp(new Shovel());
                 //farmer.addItemByMenuIfNecessaryElseHoldUp(new SeedPacket("Cauliflower", 28));

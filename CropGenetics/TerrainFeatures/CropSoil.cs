@@ -13,7 +13,7 @@ using _SyrupFramework;
 
 namespace Perennials
 {
-    class CropSoil : TerrainFeature, IModdedItem
+    class CropSoil : TerrainFeature, IModdedItem, ILiquidContainer
     {
         private Color c = Color.White;
 
@@ -34,6 +34,7 @@ namespace Perennials
 
         public bool hydrated;
         public bool flooded;
+        public int floodLevel;
         public bool holdOver;
         public SoilCrop crop;
         public bool weeds;
@@ -62,6 +63,7 @@ namespace Perennials
             hydrated = false;
             flooded = false;
             holdOver = false;
+            floodLevel = 0;
         }
 
         public override Rectangle getBoundingBox(Vector2 tileLocation)
@@ -137,6 +139,11 @@ namespace Perennials
                     Grass.grassSound.Play();
                 }
                 this.shake((float)(0.392699092626572 / (double)((5 + Game1.player.addedSpeed) / speedOfCollision) - (speedOfCollision > 2 ? (double)this.crop.currentPhase * 3.14159274101257 / 64.0 : 0.0)), (float)Math.PI / 80f / (float)((5 + Game1.player.addedSpeed) / speedOfCollision), (double)positionOfCollider.Center.X > (double)tileLocation.X * (double)Game1.tileSize + (double)(Game1.tileSize / 2));
+            }
+            if (Game1.soundBank != null && (who == null || who.GetType() != typeof(FarmAnimal)) && !StepSoundHelper.woodSound.IsPlaying)
+            {
+                StepSoundHelper.woodSound = Game1.soundBank.GetCue(getFootstepSound());
+                StepSoundHelper.woodSound.Play();
             }
             if (this.crop == null || this.crop.currentPhase == 0 || (!(who is StardewValley.Farmer) || !(who as StardewValley.Farmer).running))
                 return;
@@ -331,14 +338,11 @@ namespace Perennials
 
         public override bool isPassable(Character c)
         {
-            //if (flooded && !(c as Farmer).swimming)
-            //{
-            //    return false;
-            //}
-            //else if (flooded && (c as Farmer).swimming)
-            //{
-            //    return true;
-            //}
+            if (c is null)
+                c = Game1.player;
+            Vector2 characterTileLocation = c.getTileLocation();
+            if (height == Lowered && c.currentLocation.terrainFeatures.ContainsKey(characterTileLocation) && c.currentLocation.terrainFeatures[characterTileLocation] is IrrigationBridge)
+                return false;
             if (crop != null)
                 return !crop.impassable;
             return true;
@@ -361,9 +365,18 @@ namespace Perennials
             npk = new int[] { 0, 0, 0 };
         }
 
+        public string getFootstepSound()
+        {
+            if(height == Lowered && flooded)
+            {
+                return "slosh";
+            }
+            return "sandyStep";
+        }
+
         public override bool performUseAction(Vector2 tileLocation, GameLocation location)
         {
-            //Global.Log("Touched a cropsoil!  Currently " + (height == Lowered ? "a ditch, " : (height == Flat ? "flat, " : "raised, ")) + " and " + (flooded ? "flooded." : (hydrated ? "hydrated." : "dry.")));
+            //Logger.Log("Touched a cropsoil!  Currently " + (height == Lowered ? "a ditch, " : (height == Flat ? "flat, " : "raised, ")) + " and " + (flooded ? "flooded." : (hydrated ? "hydrated." : "dry.")));
             //return true;
             if(crop != null)
             {
@@ -418,6 +431,8 @@ namespace Perennials
                 }
                 else if (t.GetType() == typeof(Pickaxe) && crop == null)
                 {
+                    height = Flat;
+                    PerennialsGlobal.equalizeDitches(location);
                     removeWaterSource(location, tileLocation);
                     return true;
                 }
@@ -481,11 +496,14 @@ namespace Perennials
 
         public void hydrateAdjacent(GameLocation environment, Vector2 tileLocation)
         {
+            if (height != Lowered || !flooded)
+                return;
+            //Logger.Log("Hydrating adjacent tiles...");
             List<Vector2> adjacentTiles = getAdjacent(tileLocation, 2, false);
 
             foreach (Vector2 key in adjacentTiles)
             {
-                if (environment.terrainFeatures.ContainsKey(key) && environment.terrainFeatures[key].GetType() == typeof(CropSoil))
+                if (environment.terrainFeatures.ContainsKey(key) && environment.terrainFeatures[key] is CropSoil)
                 {
                     CropSoil adjacent = (CropSoil)environment.terrainFeatures[key];
                     if (adjacent.height != Lowered)
@@ -515,8 +533,12 @@ namespace Perennials
             }
             if (Game1.isRaining)
             {
-                if (height == Lowered && !flooded)
+                if (height == Lowered)
+                {
+                    floodLevel = 16;
                     flooded = true;
+                    processLiquidLevelChange();
+                }
                 if (!hydrated)
                     hydrated = true;
                 holdOver = true;
@@ -579,6 +601,30 @@ namespace Perennials
             }
         }
 
+        private void calculateAdjacentValue(int amount, Vector2 key)
+        {
+            if (Game1.currentLocation.terrainFeatures.ContainsKey(key) && Game1.currentLocation.terrainFeatures[key].GetType() == typeof(CropSoil))
+            {
+                if ((Game1.currentLocation.terrainFeatures[key] as CropSoil).height == height)
+                {
+                    index1 += amount;
+                    if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).hydrated == this.hydrated)
+                        index2 += amount;
+                    if (height == Lowered)
+                    {
+                        if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).flooded == this.flooded)
+                            index3 += amount;
+                    }
+                }
+            }
+            else if (height == Lowered && Game1.currentLocation.terrainFeatures.ContainsKey(key) && Game1.currentLocation.terrainFeatures[key] is IrrigationBridge)
+            {
+                index1 += amount;
+                index2 += amount;
+                index3 += amount;
+            }
+        }
+
         private void calculateAdjacency(Vector2 tileLocation, GameLocation location = null)
         {
             if (location is null)
@@ -588,66 +634,14 @@ namespace Perennials
             index3 = 0;
             Vector2 key = tileLocation;
             ++key.X;
-            if (location.terrainFeatures.ContainsKey(key) && Game1.currentLocation.terrainFeatures[key].GetType() == typeof(CropSoil))
-            {
-                if ((Game1.currentLocation.terrainFeatures[key] as CropSoil).height == height)
-                {
-                    index1 += 100;
-                    if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).hydrated == this.hydrated)
-                        index2 += 100;
-                    if (height == Lowered)
-                    {
-                        if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).flooded == this.flooded)
-                            index3 += 100;
-                    }
-                }
-            }
+            calculateAdjacentValue(100, key);
             key.X -= 2f;
-            if (location.terrainFeatures.ContainsKey(key) && Game1.currentLocation.terrainFeatures[key].GetType() == typeof(CropSoil))
-            {
-                if ((Game1.currentLocation.terrainFeatures[key] as CropSoil).height == height)
-                {
-                    index1 += 10;
-                    if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).hydrated == this.hydrated)
-                        index2 += 10;
-                    if (height == Lowered)
-                    {
-                        if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).flooded == this.flooded)
-                            index3 += 10;
-                    }
-                }
-            }
+            calculateAdjacentValue(10, key);
             ++key.X;
             ++key.Y;
-            if (location.terrainFeatures.ContainsKey(key) && Game1.currentLocation.terrainFeatures[key].GetType() == typeof(CropSoil))
-            {
-                if ((Game1.currentLocation.terrainFeatures[key] as CropSoil).height == height)
-                {
-                    index1 += 500;
-                    if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).hydrated == this.hydrated)
-                        index2 += 500;
-                    if (height == Lowered)
-                    {
-                        if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).flooded == this.flooded)
-                            index3 += 500;
-                    }
-                }
-            }
+            calculateAdjacentValue(500, key);
             key.Y -= 2f;
-            if (location.terrainFeatures.ContainsKey(key) && Game1.currentLocation.terrainFeatures[key].GetType() == typeof(CropSoil))
-            {
-                if ((Game1.currentLocation.terrainFeatures[key] as CropSoil).height == height)
-                {
-                    index1 += 1000;
-                    if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).hydrated == this.hydrated)
-                        index2 += 1000;
-                    if (height == Lowered)
-                    {
-                        if (((CropSoil)Game1.currentLocation.terrainFeatures[key]).flooded == this.flooded)
-                            index3 += 1000;
-                    }
-                }
-            }
+            calculateAdjacentValue(1000, key);
         }
 
         public override bool tickUpdate(GameTime time, Vector2 tileLocation, GameLocation location)
@@ -725,35 +719,20 @@ namespace Perennials
                 SpriteEffects.None,
                 1E-08f
             );
-            if(height == Lowered)
+            if(height == Lowered && flooded)
             {
-                int leftCrop = index1 % 100 == 10 ? 0 : 8;
-                int rightCrop = index1 % 500 >= 100 ? 0 : 8;
-                int bottomCrop = index1 % 1000 >= 500 ? 0 : 8;
-                int topCrop = index1 >= 1000 ? 0 : 8;
-                spriteBatch.Draw(
-                    Game1.mouseCursors,
-                    Game1.GlobalToLocal(Game1.viewport, new Vector2(tileLocation.X * (float)Game1.tileSize, tileLocation.Y * (float)Game1.tileSize)),
-                    new Microsoft.Xna.Framework.Rectangle?(
-                        new Rectangle(
-                            leftCrop + location.waterAnimationIndex * 64,
-                            topCrop + 2064 + ((tileLocation.X + (tileLocation.Y + 1)) % 2 == 0 ? (location.waterTileFlip ? 128 : 0) : (location.waterTileFlip ? 0 : 128)),
-                            64 - (leftCrop + rightCrop),
-                            64 - (topCrop + bottomCrop)
-                    )),
-                    (Color)((NetFieldBase<Color, NetColor>)location.waterColor),
-                    0.0f,
-                    new Vector2(leftCrop * -1, topCrop * -1),
-                    1f,
-                    SpriteEffects.None,
-                    1.2E-08f
-                );
+                Color locationWaterColor = (Color)((NetFieldBase<Color, NetColor>)location.waterColor);
+                byte r = locationWaterColor.R;
+                byte g = locationWaterColor.G;
+                byte b = locationWaterColor.B;
+                Color ditchColor = new Color(0, 49, 84, Math.Min(128, 4 * floodLevel));
+                drawWater(spriteBatch, location, tileLocation, ditchColor, index1);
                 spriteBatch.Draw(texture, Game1.GlobalToLocal(Game1.viewport, new Vector2(tileLocation.X * (float)Game1.tileSize, tileLocation.Y * (float)Game1.tileSize)), new Rectangle?(new Rectangle(num3 % 4 * 16 + 128, num3 / 4 * 16, 16, 16)), this.c, 0.0f, Vector2.Zero, (float)Game1.pixelZoom, SpriteEffects.None, 1.4E-08f);
             }
             //if (flooded)
             //    spriteBatch.Draw(texture, Game1.GlobalToLocal(Game1.viewport, new Vector2(tileLocation.X * (float)Game1.tileSize, tileLocation.Y * (float)Game1.tileSize)), new Rectangle?(new Rectangle(num3 % 4 * 16 + 128, num3 / 4 * 16, 16, 16)), this.c, 0.0f, Vector2.Zero, (float)Game1.pixelZoom, SpriteEffects.None, 1.2E-08f);
-            //else if (hydrated)
-            //    spriteBatch.Draw(texture, Game1.GlobalToLocal(Game1.viewport, new Vector2(tileLocation.X * (float)Game1.tileSize, tileLocation.Y * (float)Game1.tileSize)), new Rectangle?(new Rectangle(num2 % 4 * 16 + 64, num2 / 4 * 16, 16, 16)), this.c, 0.0f, Vector2.Zero, (float)Game1.pixelZoom, SpriteEffects.None, 1.2E-08f);
+            if (hydrated && !flooded)
+                spriteBatch.Draw(texture, Game1.GlobalToLocal(Game1.viewport, new Vector2(tileLocation.X * (float)Game1.tileSize, tileLocation.Y * (float)Game1.tileSize)), new Rectangle?(new Rectangle(num2 % 4 * 16 + 64, num2 / 4 * 16, 16, 16)), this.c, 0.0f, Vector2.Zero, (float)Game1.pixelZoom, SpriteEffects.None, 1.2E-08f);
             if (weeds)
             {
                 int num4 = (int)tileLocation.X * 7 + (int)tileLocation.Y * 11;
@@ -772,6 +751,84 @@ namespace Perennials
             if (crop == null)
                 return;
             crop.draw(spriteBatch, tileLocation, Color.White, shakeRotation);
+        }
+
+        public void drawWater(SpriteBatch b, GameLocation location, Vector2 tileLocation, Color water, int index1)
+        {
+            if (location.currentEvent != null)
+                location.currentEvent.drawUnderWater(b);
+            int leftCrop = index1 % 100 == 10 ? 0 : 8;
+            int rightCrop = index1 % 500 >= 100 ? 0 : 8;
+            int bottomCrop = index1 % 1000 >= 500 ? 0 : 8;
+            int topCrop = index1 >= 1000 ? 0 : 8;
+            b.Draw(
+                Game1.mouseCursors,
+                Game1.GlobalToLocal(Game1.viewport, new Vector2(tileLocation.X * (float)Game1.tileSize, tileLocation.Y * (float)Game1.tileSize)),
+                new Microsoft.Xna.Framework.Rectangle?(
+                    new Rectangle(
+                        leftCrop + location.waterAnimationIndex * 64,
+                        topCrop + 2064 + ((tileLocation.X + (tileLocation.Y + 1)) % 2 == 0 ? (location.waterTileFlip ? 128 : 0) : (location.waterTileFlip ? 0 : 128)),
+                        64 - (leftCrop + rightCrop),
+                        64 - (topCrop + bottomCrop)
+                )),
+                water,
+                0.0f,
+                new Vector2(leftCrop * -1, topCrop * -1),
+                1f,
+                SpriteEffects.None,
+                1.2E-08f
+            );
+        }
+
+        private void processLiquidLevelChange()
+        {
+            if (floodLevel <= 0)
+            {
+                flooded = false;
+                holdOver = false;
+                hydrated = false;
+            }
+            else if (floodLevel == 1)
+            {
+                flooded = false;
+                holdOver = false;
+                hydrated = true;
+            }
+            else if (floodLevel == 2)
+            {
+                flooded = false;
+                holdOver = true;
+                hydrated = true;
+            }
+            else
+            {
+                flooded = true;
+                holdOver = true;
+                hydrated = true;
+            }
+        }
+
+        public void addLiquid(int amount)
+        {
+            if(height == Lowered)
+            {
+                floodLevel += amount;
+                floodLevel = Math.Min(floodLevel, 16);
+                floodLevel = Math.Max(0, floodLevel);
+            }
+            processLiquidLevelChange();
+        }
+
+        public void setLiquid(int amount)
+        {
+            addLiquid(amount - floodLevel);
+        }
+
+        public int getLiquidAmount()
+        {
+            if(height == Lowered && flooded)
+                return floodLevel;
+            return (hydrated ? 1 : 0) + (holdOver ? 1 : 0);
         }
 
         private SoilCrop getCrop(string which)
@@ -816,6 +873,7 @@ namespace Perennials
             data["hydrated"] = hydrated.ToString();
             data["flooded"] = flooded.ToString();
             data["holdOver"] = holdOver.ToString();
+            data["floodLevel"] = floodLevel.ToString();
             if(crop != null)
             {
                 data["crop"] = crop.crop;
@@ -834,6 +892,9 @@ namespace Perennials
             hydrated = Convert.ToBoolean(data["hydrated"]);
             flooded = Convert.ToBoolean(data["flooded"]);
             holdOver = Convert.ToBoolean(data["holdOver"]);
+            string floodString = "0";
+            data.TryGetValue("floodLevel", out floodString);
+            floodLevel = Convert.ToInt32(floodString);
             if (data.ContainsKey("crop"))
             {
                 crop = getCrop(data["crop"]);
