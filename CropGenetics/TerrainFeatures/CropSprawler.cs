@@ -270,11 +270,6 @@ namespace Perennials
         {
             bool grew = false;
             string report = "Sprawler " + crop + "'s growth report: ";
-            if (flooded)
-            {
-                report += "flooded, and now dead.";
-                dead = true;
-            }
             if (isGrowingSeason(spoofSeason))
             {
                 if (!mature && !spreading)

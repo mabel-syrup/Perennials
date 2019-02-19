@@ -37,6 +37,9 @@ namespace Perennials
         public bool shakable = true;
         public string specialType;
         private int yearsToFruit;
+        public int nReq;
+        public int pReq;
+        public int kReq;
 
         //Individual-specific
         public bool dead;
@@ -59,12 +62,15 @@ namespace Perennials
         public double hydration;
         public int neighbors;
         public double weedless;
+        public double fertilized;
         public int age;
         public int years = 0;
         public int heightOffset;
 
         public bool weeds = false;
-        public int[] npk;
+        public int n;
+        public int p;
+        public int k;
         public bool flip = false;
         private Color tintColor = Color.ForestGreen;
         private int seasonOffset;
@@ -108,7 +114,9 @@ namespace Perennials
                 regrowthStages = new List<int>();
                 seasonsToGrowIn = new List<string>();
                 seasonOffset = offsetForSeason();
-
+                nReq = 1;
+                pReq = p;
+                kReq = k;
                 hydrationRequirement = 1f;
 
                 Dictionary<string, string> cropData = getCropFromXNB(cropDictionary[cropName]);
@@ -182,6 +190,11 @@ namespace Perennials
                 Logger.Log("Crop data is not in correct format!  Given\n" + data);
                 return null;
             }
+        }
+
+        public virtual void flood()
+        {
+            dead = true;
         }
 
         public bool produceWeeds()
@@ -328,14 +341,8 @@ namespace Perennials
             bool grew = false;
 
             string report = crop + " growth report: ";
-
-            if (flooded)
-            {
-                report += "flooded, so is now dead.";
-                dead = true;
-            }
             //The crop is able to grow now, if it needs to.
-            else if (growingSeason)
+            if (growingSeason)
             {
                 report += season + " is within growing season, ";
                 //The crop is growing from seeds.  This is a separate lifestage from regrowth in perennials.
@@ -468,6 +475,7 @@ namespace Perennials
                 age++;
                 hydration = (((age - 1) * hydration) + (hydrated ? 1 : 0)) / age;
                 weedless = (((age - 1) * weedless) + (weeds ? 0 : 1)) / age;
+                fertilized = (((age - 1) * fertilized) + (fertilizationCorrectness())) / age;
             }
             else
             {
@@ -484,6 +492,11 @@ namespace Perennials
             //Logger.Log(report);
         }
 
+        private float fertilizationCorrectness()
+        {
+            return 1f - (Math.Min(n - nReq, 0) + Math.Min(p - pReq, 0) + Math.Min(k - kReq, 0) / -6f);
+        }
+
         public int calculateQuality(StardewValley.Farmer who = null)
         {
             if(who == null)
@@ -498,15 +511,15 @@ namespace Perennials
             quality += waterQuality;
             quality += weedless * 50;
             //todo: fertilizer bonus
+            quality += fertilized * 150;
             quality += Math.Min(neighbors * 25, 75);
             int ageQuality = ageQualities[Math.Min(years, 10)];
             //quality += Math.Min(years * 20, 200);
             quality += ageQuality;
             quality += (who.FarmingLevel * 10);
-
             Logger.Log("Quality breakdown:\n" +
                 "Water: " + waterQuality + "\n" +
-                "Weedless: " + weedless * 50 + "\nFertilizer: 0\n" +
+                "Weedless: " + weedless * 50 + "\nFertilizer:" + fertilized * 150 + "\n" +
                 "Adjacency: " + Math.Min(neighbors * 25, 75) + "\n" +
                 "Age: " + ageQuality + "\n" +
                 "Farmer: " + (who.FarmingLevel * 10));

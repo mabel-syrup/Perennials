@@ -22,12 +22,17 @@ namespace Perennials
         private string description;
         private string categoryName;
 
-        public SeedPacket()
+        public SeedPacket() : base(Vector2.Zero, 322, "Seed Packet", true, true, false, false)
         {
 
         }
 
-        public SeedPacket(string which, int count = 1) : base(Vector2.Zero, -1, count)
+        public SeedPacket(string which, int count = 1) : base(Vector2.Zero, 322, "Seed Packet", true, true, false, false)
+        {
+            init(which, count);
+        }
+
+        public SeedPacket(Vector2 tileLocation, string which, int count=1) : base(tileLocation, 322, "Seed Packet", true, true, false, false)
         {
             init(which, count);
         }
@@ -35,10 +40,11 @@ namespace Perennials
         public void init(string which, int count = 1)
         {
             this.Stack = count;
+            this.stack.Value = count;
             crop = which;
             if (seeds.ContainsKey(which))
             {
-                Dictionary<string, string> seedData = getPacketFromXML(seeds[which]);
+                Dictionary<string, string> seedData = getPacketFromXNB(seeds[which]);
                 if (seedData is null)
                 {
                     Logger.Log("Could not create a seed packet for the crop '" + which + "'!");
@@ -47,7 +53,8 @@ namespace Perennials
                 name = seedData["name"];
                 ParentSheetIndex = Convert.ToInt32(seedData["parentSheetIndex"]);
                 Price = Convert.ToInt32(seedData["price"]);
-                Category = Convert.ToInt32(seedData["categoryID"]);
+                //Category = Convert.ToInt32(seedData["categoryID"]);
+                Category = CraftingCategory;
                 categoryName = seedData["categoryName"];
                 displayName = seedData["displayName"];
                 description = seedData["description"];
@@ -69,11 +76,17 @@ namespace Perennials
             if(l is Farm || (l.Name != null && l.name.Equals("Greenhouse"))){
                 if (l.terrainFeatures.ContainsKey(tile) && l.terrainFeatures[tile] is CropSoil)
                 {
+                    //Logger.Log("Seeds can be sown here.");
                     return true;
                 }
-                return false;
             }
             return false;
+        }
+
+        public override bool performUseAction(GameLocation location)
+        {
+            //Logger.Log("Performing seedpacket use action...");
+            return base.performUseAction(location);
         }
 
         public override bool placementAction(GameLocation location, int x, int y, Farmer who = null)
@@ -95,7 +108,7 @@ namespace Perennials
             return false;
         }
 
-        public Dictionary<string,string> getPacketFromXML(string data)
+        public Dictionary<string,string> getPacketFromXNB(string data)
         {
             Dictionary<string, string> seedPacketData = new Dictionary<string, string>();
             string[] substrings = data.Split('/');
@@ -131,9 +144,27 @@ namespace Perennials
             return categoryName;
         }
 
+        public Rectangle getSprite()
+        {
+            int spriteX = parentSheetIndex % 8;
+            int spriteY = ((int)parentSheetIndex / 8);
+            return new Rectangle(spriteX * 16, spriteY * 16, 16, 16);
+        }
+
         public override void drawInMenu(SpriteBatch spriteBatch, Vector2 location, float scaleSize, float transparency, float layerDepth, bool drawStackNumber, Color color, bool drawShadow)
         {
-            spriteBatch.Draw(parentSheet, location + new Vector2((float)(int)((double)(Game1.tileSize / 2) * (double)scaleSize), (float)(int)((double)(Game1.tileSize / 2) * (double)scaleSize)), new Microsoft.Xna.Framework.Rectangle?(Game1.getSourceRectForStandardTileSheet(parentSheet, this.parentSheetIndex, 16, 16)), Color.White * transparency, 0.0f, new Vector2(8f, 8f) * scaleSize, (float)Game1.pixelZoom * scaleSize, SpriteEffects.None, layerDepth);
+            spriteBatch.Draw(
+                parentSheet,
+                location + new Vector2((float)(int)((double)(Game1.tileSize / 2) * (double)scaleSize),
+                (float)(int)((double)(Game1.tileSize / 2) * (double)scaleSize)),
+                getSprite(),  //new Microsoft.Xna.Framework.Rectangle?(Game1.getSourceRectForStandardTileSheet(parentSheet, this.parentSheetIndex, 16, 16)),
+                Color.White * transparency,
+                0.0f,
+                new Vector2(8f, 8f) * scaleSize,
+                (float)Game1.pixelZoom * scaleSize,
+                SpriteEffects.None,
+                layerDepth
+            );
             //if (drawStackNumber && this.maximumStackSize() > 1 && ((double)scaleSize > 0.3 && this.Stack != int.MaxValue) && this.Stack > 1)
             //    Utility.drawTinyDigits(this.stack, spriteBatch, location + new Vector2((float)(Game1.tileSize - Utility.getWidthOfTinyDigitString(this.stack, 3f * scaleSize)) + 3f * scaleSize, (float)((double)Game1.tileSize - 18.0 * (double)scaleSize + 2.0)), 3f * scaleSize, 1f, Color.White);
             if (drawStackNumber && this.maximumStackSize() > 1 && ((double)scaleSize > 0.3 && this.Stack != int.MaxValue) && this.Stack > 1)
@@ -141,9 +172,43 @@ namespace Perennials
 
         }
 
-        public override void drawWhenHeld(SpriteBatch spriteBatch, Vector2 objectPosition, StardewValley.Farmer f)
+        //public override void drawWhenHeld(SpriteBatch spriteBatch, Vector2 objectPosition, StardewValley.Farmer f)
+        //{
+        //    spriteBatch.Draw(parentSheet, objectPosition, new Microsoft.Xna.Framework.Rectangle?(GameLocation.getSourceRectForObject(f.ActiveObject.ParentSheetIndex)), Color.White, 0.0f, Vector2.Zero, (float)Game1.pixelZoom, SpriteEffects.None, Math.Max(0.0f, (float)(f.getStandingY() + 2) / 10000f));
+        //}
+
+        public override void drawWhenHeld(SpriteBatch spriteBatch, Vector2 objectPosition, Farmer f)
         {
-            spriteBatch.Draw(parentSheet, objectPosition, new Microsoft.Xna.Framework.Rectangle?(GameLocation.getSourceRectForObject(f.ActiveObject.ParentSheetIndex)), Color.White, 0.0f, Vector2.Zero, (float)Game1.pixelZoom, SpriteEffects.None, Math.Max(0.0f, (float)(f.getStandingY() + 2) / 10000f));
+            spriteBatch.Draw(
+                parentSheet,
+                objectPosition,
+                getSprite(),
+                Color.White,
+                0.0f,
+                new Vector2(0, 0),
+                Game1.pixelZoom,
+                SpriteEffects.None,
+                Math.Max(0.0f, (float)(f.getStandingY() + 2) / 10000f)
+            );
+        }
+
+        public override void drawPlacementBounds(SpriteBatch spriteBatch, GameLocation location)
+        {
+            int x = Game1.getOldMouseX() + Game1.viewport.X;
+            int y = Game1.getOldMouseY() + Game1.viewport.Y;
+            if ((double)Game1.mouseCursorTransparency == 0.0)
+            {
+                x = (int)Game1.player.GetGrabTile().X * 64;
+                y = (int)Game1.player.GetGrabTile().Y * 64;
+            }
+            if (Game1.player.GetGrabTile().Equals(Game1.player.getTileLocation()) && (double)Game1.mouseCursorTransparency == 0.0)
+            {
+                Vector2 translatedVector2 = Utility.getTranslatedVector2(Game1.player.GetGrabTile(), Game1.player.FacingDirection, 1f);
+                x = (int)translatedVector2.X * 64;
+                y = (int)translatedVector2.Y * 64;
+            }
+            bool flag = Utility.playerCanPlaceItemHere(location, (Item)this, x, y, Game1.player);
+            spriteBatch.Draw(Game1.mouseCursors, new Vector2((float)(x / 64 * 64 - Game1.viewport.X), (float)(y / 64 * 64 - Game1.viewport.Y)), new Microsoft.Xna.Framework.Rectangle?(new Microsoft.Xna.Framework.Rectangle(flag ? 194 : 210, 388, 16, 16)), Color.White, 0.0f, Vector2.Zero, 4f, SpriteEffects.None, 0.01f);
         }
 
         public override Item getOne()

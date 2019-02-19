@@ -41,12 +41,6 @@ namespace Perennials
             bool grew = false;
             bool growingSeason = isGrowingSeason(spoofSeason, environment);
             string report = crop + " growth report: ";
-
-            if (flooded)
-            {
-                report += "flooded, so is now dead.";
-                dead = true;
-            }
             if (growingSeason)
             {
                 report += season + " is within growing season, ";
@@ -233,5 +227,7 @@ namespace Perennials
         {
             b.Draw(cropSpriteSheet, screenPosition, new Rectangle?(this.getSprite(0)), toTint, rotation, new Vector2((float)(Game1.tileSize / 2), (float)(Game1.tileSize + Game1.tileSize / 2)), scale, this.flip ? SpriteEffects.FlipHorizontally : SpriteEffects.None, layerDepth);
         }
+
+
     }
 }

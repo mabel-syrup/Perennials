@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using StardewModdingAPI;
 using StardewValley;
 using StardewValley.TerrainFeatures;
 using _SyrupFramework;
@@ -17,6 +19,10 @@ namespace Perennials
 
         private static Dictionary<Farmer, int> farmerHeight;
         private static Dictionary<Farmer, Boolean> farmerSubmerged;
+
+        public static Texture2D objectSpriteSheet;
+
+        public static Multiplayer multiplayer;
 
         private const int raise = 0;
         private const int low = 0;

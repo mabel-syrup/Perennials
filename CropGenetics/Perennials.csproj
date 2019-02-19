@@ -54,7 +54,10 @@
   <ItemGroup>
     <Compile Include="ILiquidContainer.cs" />
     <Compile Include="Irrigator.cs" />
+    <Compile Include="Items\CompostBin.cs" />
+    <Compile Include="Items\Fertilizer.cs" />
     <Compile Include="Items\Spigot.cs" />
+    <Compile Include="PerennialsUtility.cs" />
     <Compile Include="StepSoundHelper.cs" />
     <Compile Include="TerrainFeatures\CropBush.cs" />
     <Compile Include="TerrainFeatures\CropRoot.cs" />

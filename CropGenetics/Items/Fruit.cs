@@ -22,7 +22,7 @@ namespace Perennials
         public int row;
         public int healthValue;
         public int energyValue;
-
+        public string qualityPrefix;
 
 
         public string fruit;
@@ -47,8 +47,8 @@ namespace Perennials
                     Logger.Log("Could not create a fruit item for the crop '" + which + "'!");
                     throw new KeyNotFoundException("The Fruits.xml file did not contain a valid definition for the crop name.  Please contact the mod author if this issue persists.");
                 }
-                name = fruitData["displayName"];
-                DisplayName = name;
+                name = which;
+                DisplayName = fruitData["displayName"];
                 row = Convert.ToInt32(fruitData["row"]);
                 ParentSheetIndex = Convert.ToInt32(fruitData["parentSheetIndex"]);
                 //edibility = Convert.ToInt32(Game1.objectInformation[parentSheetIndex][objectInfoEdibilityIndex]);
@@ -64,19 +64,25 @@ namespace Perennials
                 {
                     case 1:
                         qualityFactor = 1.25f;
+                        qualityPrefix = "Artisinal ";
                         break;
                     case 2:
                         qualityFactor = 1.5f;
+                        qualityPrefix = "High-end ";
                         break;
                     case 3:
                         qualityFactor = 2f;
+                        qualityPrefix = "Masterful ";
                         break;
                     default:
                         qualityFactor = 1f;
+                        qualityPrefix = "";
                         break;
                 }
                 Price = (int)Math.Ceiling(Convert.ToInt32(prices[correctedQuality]) / qualityFactor);
-                Category = -75;
+                //Category = -75;
+                //Category = FruitsCategory;
+                Category = -279;
                 description = fruitData["description"];
                 string[] healthValues = fruitData["health"].Split(' ');
                 if (healthValues.Length < 4 && healthValues.Length > 1)
@@ -101,7 +107,6 @@ namespace Perennials
                     energyValue = 0;
                 else
                     energyValue = Convert.ToInt32(energyValues[correctedQuality]);
-                Logger.Log("Edibility of " + name + " is " + edibility);
             }
             else
             {
@@ -109,6 +114,22 @@ namespace Perennials
             }
             //Logger.Log("Sprite index for this " + name + " is " + ((row * 4) + (quality < 4 ? quality : 3)));
             //Logger.Log("Fruit sprite sheet is " + fruitSheet.Width / 16 + " tiles wide by " + fruitSheet.Height / 16 + " tiles tall.");
+        }
+
+        public override void drawPlacementBounds(SpriteBatch spriteBatch, GameLocation location)
+        {
+            return;
+        }
+
+        public override string getCategoryName()
+        {
+            return Game1.content.LoadString("Strings\\StringsFromCSFiles:Object.cs.12854");
+            //return base.getCategoryName();
+        }
+
+        public override Color getCategoryColor()
+        {
+            return Color.DeepPink;
         }
 
         public Dictionary<string, string> getFruitFromXML(string data)
@@ -125,7 +146,7 @@ namespace Perennials
                 fruitData["edible"] = substrings[5];
                 fruitData["energy"] = substrings[6];
                 fruitData["health"] = substrings[7];
-                Logger.Log("Parsed " + fruitData["displayName"] + " successfully.");
+                //Logger.Log("Parsed " + fruitData["displayName"] + " successfully.");
                 return fruitData;
             }
             catch (IndexOutOfRangeException)
@@ -133,6 +154,49 @@ namespace Perennials
                 Logger.Log("Seed packet data is not in correct format!");
                 return null;
             }
+        }
+
+        public override bool isPlaceable()
+        {
+            //Logger.Log("Checking if fruit is placeable...");
+            return (Game1.currentLocation.objects.ContainsKey(Game1.player.GetGrabTile()));
+        }
+
+        public override bool canBePlacedHere(GameLocation l, Vector2 tile)
+        {
+            //Logger.Log("Checking if fruit can be placed here...");
+            return (l.objects.ContainsKey(tile));
+        }
+
+        public override bool placementAction(GameLocation location, int x, int y, Farmer who = null)
+        {
+            Logger.Log("Attempting to place fruit into machine...");
+            if (who == null)
+                who = Game1.player;
+            Vector2 tileLocation = new Vector2((float)(x / 64), (float)(y / 64));
+            if (location.objects.ContainsKey(tileLocation))
+            {
+                StardewValley.Object machine = location.objects[tileLocation];
+                StardewValley.Object tempFruit = (StardewValley.Object)this.getOne();
+                tempFruit.Category = FruitsCategory;
+                if (!machine.name.Equals("Keg") && !machine.name.Equals("PreservesJar"))
+                    return false;
+                if(machine.performObjectDropInAction(tempFruit, false, who))
+                {
+                    Logger.Log("Placed " + fruit + " into the machine, expecting " + qualityPrefix + fruit + " Wine out.");
+                    machine.heldObject.Value.name = qualityPrefix + fruit + " Wine";
+                    machine.heldObject.Value.preserve.Value = new PreserveType?(PreserveType.Wine);
+                }
+                else
+                {
+                    Logger.Log("Machine could not accept this fruit!");
+                }
+            }
+            else
+            {
+                Logger.Log("Fruit did not find a machine to be placed in!");
+            }
+            return false;
         }
 
         public override string getDescription()
@@ -164,9 +228,26 @@ namespace Perennials
             }
         }
 
+        public override void drawWhenHeld(SpriteBatch spriteBatch, Vector2 objectPosition, Farmer f)
+        {
+            spriteBatch.Draw(
+                fruitSheet,
+                objectPosition,
+                getSprite(),
+                Color.White,
+                0.0f,
+                new Vector2(0, 0),
+                Game1.pixelZoom,
+                SpriteEffects.None,
+                Math.Max(0.0f, (float)(f.getStandingY() + 2) / 10000f)
+            );
+        }
+
         public override Item getOne()
         {
-            return new Fruit();
+            if(fruit == null || fruit == "")
+                return new Fruit();
+            return new Fruit(fruit, 1, quality);
         }
 
         public void Load(Dictionary<string, string> data)
