@@ -30,6 +30,64 @@ namespace Perennials
             bushSpriteSheet = bushSprites[cropName];
         }
 
+        public override void loadFromXNBData(Dictionary<string, string> cropData)
+        {
+            Logger.Log("Parsing as a bush crop...");
+            string[] growStages = cropData["growthTimes"].Split(' ');
+            foreach (string stage in growStages)
+            {
+                growthStages.Add(Convert.ToInt32(stage));
+            }
+            string[] regrowStages = cropData["matureTimes"].Split(' ');
+            foreach (string stage in regrowStages)
+                regrowthStages.Add(Convert.ToInt32(stage));
+            if (Convert.ToBoolean(cropData["spring"]))
+                seasonsToGrowIn.Add("spring");
+            if (Convert.ToBoolean(cropData["summer"]))
+                seasonsToGrowIn.Add("summer");
+            if (Convert.ToBoolean(cropData["fall"]))
+                seasonsToGrowIn.Add("fall");
+            if (Convert.ToBoolean(cropData["winter"]))
+                seasonsToGrowIn.Add("winter");
+            perennial = true;
+            tropical = Convert.ToBoolean(cropData["tropical"]);
+            parseMultiHarvest(cropData["daysBetweenHarvest"]);
+            rowInSpriteSheet = 0;
+            columnInSpriteSheet = 0;
+            parseYears(cropData["growthYears"]);
+            string[] npk = cropData["npk"].Split(' ');
+            nReq = Convert.ToInt32(npk[0]);
+            pReq = Convert.ToInt32(npk[1]);
+            kReq = Convert.ToInt32(npk[2]);
+            //hydrationRequirement = (Convert.ToInt32(cropData["hydration"]) / 100);
+        }
+
+        public override Dictionary<string, string> getCropFromXNB(string data)
+        {
+            Dictionary<string, string> cropData = new Dictionary<string, string>();
+            string[] substrings = data.Split('/');
+            try
+            {
+                cropData["growthTimes"] = substrings[0];
+                cropData["matureTimes"] = substrings[1];
+                cropData["daysBetweenHarvest"] = substrings[2];
+                cropData["spring"] = substrings[3];
+                cropData["summer"] = substrings[4];
+                cropData["fall"] = substrings[5];
+                cropData["winter"] = substrings[6];
+                cropData["tropical"] = substrings[7];
+                cropData["growthYears"] = substrings[8];
+                cropData["npk"] = substrings[9];
+                Logger.Log("Parsed successfully as bush crop.");
+                return cropData;
+            }
+            catch (IndexOutOfRangeException)
+            {
+                Logger.Log("Bush crop data in Bushes.xml is not in correct format!  Given\n" + data);
+                return null;
+            }
+        }
+
         public override bool grow(bool hydrated, bool flooded, int xTile, int yTile, GameLocation environment, string spoofSeason = null)
         {
             string season;

@@ -176,7 +176,10 @@ namespace Perennials
                 SpriteEffects.None,
                 1E-08f
             );
-            drawFence(spriteBatch, tileLocation);
+            bool vertical = levelAdjacency >= 1000 || levelAdjacency % 1000 >= 500;
+            bool horizontal = levelAdjacency % 100 == 10 || levelAdjacency % 500 >= 100;
+            if(vertical && horizontal)
+                drawFence(spriteBatch, tileLocation);
         }
 
         public void drawFence(SpriteBatch spriteBatch, Vector2 tileLocation)
@@ -330,12 +333,29 @@ namespace Perennials
                 SpriteEffects.None,
                 depth
             );
+            //Draw supports
+            spriteBatch.Draw(fenceSheet,
+                Game1.GlobalToLocal(Game1.viewport, new Vector2(tileLocation.X * (float)Game1.tileSize, (tileLocation.Y + 1) * (float)Game1.tileSize)),
+                getSupportRect(rightEdge, leftEdge),
+                Color.White,
+                0.0f,
+                new Vector2(0, 0),
+                (float)Game1.pixelZoom,
+                SpriteEffects.None,
+                1.35E-08f
+            );
         }
 
         private Rectangle getFenceRectFrontBack(int layer, bool rightEdge, bool leftEdge)
         {
             int xIndex = (rightEdge && leftEdge ? 0 : (rightEdge ? 3 : (leftEdge ? 1 : 2)));
-            return new Rectangle(xIndex * 16, layer * 32, 16, 32);
+            return new Rectangle(xIndex * 16, layer * 32, 16, layer == 1 ? 24 : 32);
+        }
+
+        private Rectangle getSupportRect(bool rightEdge, bool leftEdge)
+        {
+            int xIndex = (rightEdge && leftEdge ? 0 : (rightEdge ? 3 : (leftEdge ? 1 : 2)));
+            return new Rectangle(xIndex * 16, 56, 16, 8);
         }
 
         private Rectangle getFenceForLayerOld(int layer, bool backEdge, bool rightEdge, bool leftEdge, bool frontEdge)

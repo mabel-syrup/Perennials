@@ -19,6 +19,8 @@ namespace Perennials
         public int spreadProgress;
         public int currentFruitSprite;
 
+        public int maxFruits;
+
         public static Dictionary<int, int> drawGuide;
         public static Dictionary<string, Texture2D> sprawlerSprites;
         private Texture2D sprawlerSpriteSheet;
@@ -36,6 +38,67 @@ namespace Perennials
             sprawlTiles = new List<Sprawl>();
             sprawlerSpriteSheet = sprawlerSprites[cropName];
             currentFruitSprite = -1;
+        }
+
+        public override void loadFromXNBData(Dictionary<string, string> cropData)
+        {
+            Logger.Log("Parsing as a sprawler crop...");
+            string[] growStages = cropData["growthTimes"].Split(' ');
+            foreach (string stage in growStages)
+            {
+                //Logger.Log("Adding growthstage of " + stage + " to " + cropName + "'s growth stages...");
+                growthStages.Add(Convert.ToInt32(stage));
+            }
+            string[] regrowStages = cropData["spreadTimes"].Split(' ');
+            foreach (string stage in regrowStages)
+                regrowthStages.Add(Convert.ToInt32(stage));
+            if (Convert.ToBoolean(cropData["spring"]))
+                seasonsToGrowIn.Add("spring");
+            if (Convert.ToBoolean(cropData["summer"]))
+                seasonsToGrowIn.Add("summer");
+            if (Convert.ToBoolean(cropData["fall"]))
+                seasonsToGrowIn.Add("fall");
+            if (Convert.ToBoolean(cropData["winter"]))
+                seasonsToGrowIn.Add("winter");
+            perennial = Convert.ToBoolean(cropData["perennial"]);
+            tropical = Convert.ToBoolean(cropData["tropical"]);
+            multiHarvest = false;
+            daysBetweenHarvest = 0;
+            daysBetweenHarvest = Convert.ToInt32(cropData["fruits"]);
+            rowInSpriteSheet = 0;
+            columnInSpriteSheet = 0;
+            parseYears(cropData["growthYears"]);
+            string[] npk = cropData["npk"].Split(' ');
+            nReq = Convert.ToInt32(npk[0]);
+            pReq = Convert.ToInt32(npk[1]);
+            kReq = Convert.ToInt32(npk[2]);
+        }
+
+        public override Dictionary<string, string> getCropFromXNB(string data)
+        {
+            Dictionary<string, string> cropData = new Dictionary<string, string>();
+            string[] substrings = data.Split('/');
+            try
+            {
+                cropData["growthTimes"] = substrings[0];
+                cropData["spreadTimes"] = substrings[1];
+                cropData["fruits"] = substrings[2];
+                cropData["spring"] = substrings[3];
+                cropData["summer"] = substrings[4];
+                cropData["fall"] = substrings[5];
+                cropData["winter"] = substrings[6];
+                cropData["perennial"] = substrings[7];
+                cropData["tropical"] = substrings[8];
+                cropData["growthYears"] = substrings[9];
+                cropData["npk"] = substrings[10];
+                Logger.Log("Parsed successfully as a Sprawler.");
+                return cropData;
+            }
+            catch (IndexOutOfRangeException)
+            {
+                Logger.Log("Sprawler crop data in Sprawlers.xml is not in correct format!  Given\n" + data);
+                return null;
+            }
         }
 
         private Dictionary<Vector2,float> getWeightedGrowth(Vector2 tileLocation, GameLocation location = null)
@@ -309,7 +372,7 @@ namespace Perennials
                         spreadProgress = 0;
                     }
                     report += ". It is now " + regrowMaturity + " days into its second growth phase, out of " + regrowDaysToMature + " needed to mature";
-                    if(regrowMaturity >= regrowthStages[2] + regrowthStages[1] + regrowthStages[0])
+                    if(regrowMaturity >= regrowthStages[1] + regrowthStages[0])
                     {
                         growFruit(spoofSeason);
                     }
@@ -377,54 +440,66 @@ namespace Perennials
 
         private int calculateAdjacency(Vector2 sprawlTile, Vector2 tileLocation, GameLocation location)
         {
-            int adjacency = 0;
+            int adjNum = 0;
             Vector2 key = sprawlTile;
             ++key.X;
             if (key == tileLocation)
-                adjacency += 100;
+                adjNum += 100;
             else
             {
                 foreach (Sprawl sprawl in sprawlTiles)
                 {
                     if (sprawl.tileLocation == key)
-                        adjacency += 100;
+                    {
+                        adjNum += 100;
+                        break;
+                    }
                 }
             }
             key.X -= 2f;
             if (key == tileLocation)
-                adjacency += 10;
+                adjNum += 10;
             else
             {
                 foreach (Sprawl sprawl in sprawlTiles)
                 {
                     if (sprawl.tileLocation == key)
-                        adjacency += 10;
+                    {
+                        adjNum += 10;
+                        break;
+                    }
                 }
             }
             ++key.X;
             ++key.Y;
             if (key == tileLocation)
-                adjacency += 500;
+                adjNum += 500;
             else
             {
                 foreach (Sprawl sprawl in sprawlTiles)
                 {
                     if (sprawl.tileLocation == key)
-                        adjacency += 500;
+                    {
+                        adjNum += 500;
+                        break;
+                    }
                 }
             }
             key.Y -= 2f;
             if (key == tileLocation)
-                adjacency += 1000;
+                adjNum += 1000;
             else
             {
                 foreach (Sprawl sprawl in sprawlTiles)
                 {
                     if (sprawl.tileLocation == key)
-                        adjacency += 1000;
+                    {
+                        adjNum += 1000;
+                        break;
+                    }
                 }
             }
-            return adjacency;
+            return adjNum;
         }
 
         public override void updateSpriteIndex(string spoofSeason = null)
@@ -435,7 +510,7 @@ namespace Perennials
 
         public int getCurrentFruit()
         {
-            int phase = -2;
+            int phase = -1;
             int growthSum = 0;
             foreach (int growthStage in regrowthStages)
             {
@@ -446,7 +521,7 @@ namespace Perennials
                     break;
             }
             if (mature)
-                return regrowthStages.Count - 2;
+                return 3;
             return phase;
         }
 
@@ -547,11 +622,18 @@ namespace Perennials
                 depth
                 //(float)((double)tileLocation.Y * (double)Game1.tileSize + (double)(Game1.tileSize / 2))
                 );
-                drawLeaves(b, tileLocation, toTint, rotation, flip, 0);
                 foreach (Sprawl sprawl in sprawlTiles)
                 {
                     int sprawlAdj = calculateAdjacency(sprawl.tileLocation, tileLocation, Game1.currentLocation);
-                    bool sprawlFlip = ((((int)sprawl.tileLocation.X + drawGuide[sprawlAdj] % 7) * 7 + ((int)sprawl.tileLocation.Y + drawGuide[sprawlAdj] % 5) * 11) % 2) == 0;
+                    bool sprawlFlip = false;
+                    try
+                    {
+                        sprawlFlip = ((((int)sprawl.tileLocation.X + drawGuide[sprawlAdj] % 7) * 7 + ((int)sprawl.tileLocation.Y + drawGuide[sprawlAdj] % 5) * 11) % 2) == 0;
+                    }
+                    catch (KeyNotFoundException)
+                    {
+                        Logger.Log("Attempted to get adjacency for " + sprawlAdj + ", but there was no adjacency by that key!", StardewModdingAPI.LogLevel.Error);
+                    }
                     b.Draw(sprawlerSpriteSheet,
                     Game1.GlobalToLocal(
                         Game1.viewport,
@@ -591,6 +673,37 @@ namespace Perennials
                 }
             }
 
+        }
+
+        public override void loadOverride(Dictionary<string, string> data)
+        {
+            spreading = Convert.ToBoolean(data["spreading"]);
+            spreadProgress = Convert.ToInt32(data["progress"]);
+            sprawlTiles.Clear();
+            foreach(string key in data.Keys)
+            {
+                if (key.StartsWith("sprawl"))
+                {
+                    string[] sprawlInfo = key.Split('_');
+                    Vector2 sprawlTile = new Vector2(Convert.ToSingle(sprawlInfo[1]), Convert.ToSingle(sprawlInfo[2]));
+                    bool sprawlHasFruit = Convert.ToBoolean(data[key]);
+                    Sprawl newSprawl = new Sprawl(sprawlTile, this);
+                    newSprawl.hasFruit = sprawlHasFruit;
+                    newSprawl.setInteractive(sprawlHasFruit);
+                    sprawlTiles.Add(newSprawl);
+                }
+            }
+        }
+
+        public override Dictionary<string, string> saveOverride(Dictionary<string,string> data)
+        {
+            data["spreading"] = spreading.ToString();
+            data["progress"] = spreadProgress.ToString();
+            foreach(Sprawl sprawl in sprawlTiles)
+            {
+                data["sprawl_" + sprawl.tileLocation.X + "_" + sprawl.tileLocation.Y] = sprawl.save();
+            }
+            return data;
         }
     }
 }

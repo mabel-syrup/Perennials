@@ -74,5 +74,10 @@ namespace Perennials
             //These are invisible!
             return;
         }
+
+        public string save()
+        {
+            return hasFruit.ToString();
+        }
     }
 }

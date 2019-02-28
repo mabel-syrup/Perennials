@@ -170,6 +170,7 @@ namespace Perennials
 
         public void Load(Dictionary<string, string> data)
         {
+            string which = data["which"];
             init(which, Stack);
         }
 

@@ -92,7 +92,7 @@ namespace Perennials
             totalWater += Math.Max(0, fromSources - totalWater);
             //Drains the irrigation completely when using a drain with a "limitless" drainage capacity, regardless of fill amount
             if (dumpAll)
-                totalWater = 0;
+                totalWater -= 1000;
             return totalWater;
         }
 

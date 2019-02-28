@@ -97,7 +97,7 @@ namespace Perennials
                 this.owner.Value = who.UniqueMultiplayerID;
             else
                 this.owner.Value = Game1.player.UniqueMultiplayerID;
-            if(location.terrainFeatures.ContainsKey(tile) && location.terrainFeatures[tile] is CropSoil)
+            if(location.terrainFeatures.ContainsKey(tile) && location.terrainFeatures[tile] is CropSoil && !location.objects.ContainsKey(tile))
             {
                 CropSoil soil = (CropSoil)location.terrainFeatures[tile];
                 bool success = soil.plant(crop, who);

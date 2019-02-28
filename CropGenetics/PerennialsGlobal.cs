@@ -21,6 +21,7 @@ namespace Perennials
         private static Dictionary<Farmer, Boolean> farmerSubmerged;
 
         public static Texture2D objectSpriteSheet;
+        public static Texture2D toolSpriteSheet;
 
         public static Multiplayer multiplayer;
 
@@ -150,7 +151,7 @@ namespace Perennials
                     if(soil.weeds && soil.crop == null)
                     {
                         double rand = Game1.random.NextDouble();
-                        if (rand <= 0.08)
+                        if (rand <= 0.08 && soil.height != CropSoil.Lowered)
                         {
                             destroyedTiles.Add(tileLocation);
                         }
@@ -268,8 +269,16 @@ namespace Perennials
             foreach(MultiTileDitch ditch in mergedDitches)
             {
                 int waterLevel = ditch.getWaterContent(location);
+                bool preventFlood = waterLevel < 0;
+                if (waterLevel < 0)
+                    waterLevel += 1000;
                 int average = waterLevel / ditch.getSize();
                 Logger.Log("Found an average water level of " + average + " for a ditch of size " + ditch.getSize() + " with a total water amount of " + waterLevel);
+                if (preventFlood)
+                {
+                    Logger.Log("Due to drain, the ditch will not flood.  Setting average water to be capped at 2...");
+                    average = Math.Min(2, average);
+                }
                 ditch.setWaterLevels(location, average);
             }
         }

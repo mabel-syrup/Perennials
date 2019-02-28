@@ -75,7 +75,7 @@ namespace Perennials
                 if (!probe)
                 {
                     Logger.Log("Processing " + dropIn.Name + " into " + heldObject.Value.Name);
-                    minutesUntilReady.Value = 20;
+                    minutesUntilReady.Value = 20000;
                     who.currentLocation.playSound("Ship");
                     heldObject.Value.Stack = 5;
                     PerennialsGlobal.multiplayer.broadcastSprites(who.currentLocation, new TemporaryAnimatedSprite[1]
@@ -90,8 +90,6 @@ namespace Perennials
             }
             return false;
         }
-
-
 
         public override void draw(SpriteBatch spriteBatch, int x, int y, float alpha = 1)
         {

@@ -30,14 +30,12 @@ namespace Perennials
         public override void DoFunction(GameLocation location, int x, int y, int power, StardewValley.Farmer who)
         {
             Logger.Log("Used shovel!");
-            //if (!(location is Farm))
-            //{
-            //    return;
-            //}
-            //Global.Log("Shovel used on farm...");
             base.DoFunction(location, x, y, power, who);
-            if (location.Name.Equals("UndergroundMine"))
+            if (location is StardewValley.Locations.MineShaft)
+            {
+                Logger.Log("Used shovel inside the mines...");
                 power = 1;
+            }
             who.Stamina = who.Stamina - ((float)(2 * power) - (float)who.FarmingLevel * 0.1f);
             power = who.toolPower;
             who.stopJittering();
@@ -49,34 +47,48 @@ namespace Perennials
                 index.Equals(vector2);
                 if (location.terrainFeatures.ContainsKey(index))
                 {
-                    if (location.terrainFeatures[index].performToolAction((Tool)this, 0, index, location))
+                    if (location.terrainFeatures[index].performToolAction(this, 0, index, location))
                         location.terrainFeatures.Remove(index);
                 }
                 else
                 {
-                    if (location.doesTileHaveProperty((int)index.X, (int)index.Y, "Diggable", "Back") != null)
+                    //If we're hitting an artifact spot
+                    if(location.objects.ContainsKey(index) && location.objects[index].parentSheetIndex == 590)
                     {
-                        if (location.Name.Equals("UndergroundMine") && !location.isTileOccupied(index, ""))
+                        Logger.Log("Used shovel on artifact spot.");
+                        location.digUpArtifactSpot((int)index.X, (int)index.Y, getLastFarmerToUse());
+                        if (!location.terrainFeatures.ContainsKey(index))
+                            location.terrainFeatures.Add(index, new CropSoil());
+                        location.playSound("hoeHit");
+                        if (location.objects.ContainsKey(index))
+                            location.objects.Remove(index);
+                        ++Game1.stats.DirtHoed;
+                    }
+                    else if (location.doesTileHaveProperty((int)index.X, (int)index.Y, "Diggable", "Back") != null)
+                    {
+                        if (location is StardewValley.Locations.MineShaft && !location.isTileOccupied(index, ""))
                         {
-                            if (Game1.mine.mineLevel < 40 || Game1.mine.mineLevel >= 80)
-                            {
-                                location.terrainFeatures.Add(index, (TerrainFeature)new HoeDirt());
-                                Game1.playSound("hoeHit");
-                            }
-                            else if (Game1.mine.mineLevel < 80)
-                            {
-                                location.terrainFeatures.Add(index, (TerrainFeature)new HoeDirt());
-                                Game1.playSound("hoeHit");
-                            }
+                            Logger.Log("Shovel used in mines.");
+                            location.terrainFeatures.Add(index,new CropSoil());
+                            Game1.playSound("hoeHit");
                             Game1.removeSquareDebrisFromTile((int)index.X, (int)index.Y);
                             location.checkForBuriedItem((int)index.X, (int)index.Y, false, false);
                             location.temporarySprites.Add(new TemporaryAnimatedSprite(12, new Vector2(vector2.X * (float)Game1.tileSize, vector2.Y * (float)Game1.tileSize), Color.White, 8, Game1.random.NextDouble() < 0.5, 50f, 0, -1, -1f, -1, 0));
+                            PerennialsGlobal.multiplayer.broadcastSprites(location, new TemporaryAnimatedSprite[1]
+                                {
+                                    new TemporaryAnimatedSprite(12, new Vector2(vector2.X * 64f, vector2.Y * 64f), Color.White, 8, Game1.random.NextDouble() < 0.5, 50f, 0, -1, -1f, -1, 0)
+                                }
+                            );
                             if (vector2List.Count > 2)
-                                location.temporarySprites.Add(new TemporaryAnimatedSprite(6, new Vector2(index.X * (float)Game1.tileSize, index.Y * (float)Game1.tileSize), Color.White, 8, Game1.random.NextDouble() < 0.5, Vector2.Distance(vector2, index) * 30f, 0, -1, -1f, -1, 0));
+                                PerennialsGlobal.multiplayer.broadcastSprites(location, new TemporaryAnimatedSprite[1]
+                                    {
+                                         new TemporaryAnimatedSprite(6, new Vector2(index.X * 64f, index.Y * 64f), Color.White, 8, Game1.random.NextDouble() < 0.5, Vector2.Distance(vector2, index) * 30f, 0, -1, -1f, -1, 0)
+                                    }
+                                );
                         }
                         else if (!location.isTileOccupied(index, "") && location.isTilePassable(new Location((int)index.X, (int)index.Y), Game1.viewport))
                         {
-                            //location.makeHoeDirt(index);
+                            Logger.Log("Shovel not used in mines.");
                             CropSoil cropSoil = new CropSoil();
                             location.terrainFeatures[index] = cropSoil;
                             Game1.playSound("hoeHit");
@@ -85,14 +97,6 @@ namespace Perennials
                             if (vector2List.Count > 2)
                                 location.temporarySprites.Add(new TemporaryAnimatedSprite(6, new Vector2(index.X * (float)Game1.tileSize, index.Y * (float)Game1.tileSize), Color.White, 8, Game1.random.NextDouble() < 0.5, Vector2.Distance(vector2, index) * 30f, 0, -1, -1f, -1, 0));
                             location.checkForBuriedItem((int)index.X, (int)index.Y, false, false);
-                            if (Game1.isRaining)
-                            {
-                                if (cropSoil.height == CropSoil.Lowered && !cropSoil.flooded)
-                                    cropSoil.flooded = true;
-                                if (!cropSoil.hydrated)
-                                    cropSoil.hydrated = true;
-                                cropSoil.holdOver = true;
-                            }
                         }
                         ++Game1.stats.DirtHoed;
                     }

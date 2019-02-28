@@ -82,7 +82,7 @@ namespace Perennials
                 Price = (int)Math.Ceiling(Convert.ToInt32(prices[correctedQuality]) / qualityFactor);
                 //Category = -75;
                 //Category = FruitsCategory;
-                Category = -279;
+                Category = FruitsCategory;
                 description = fruitData["description"];
                 string[] healthValues = fruitData["health"].Split(' ');
                 if (healthValues.Length < 4 && healthValues.Length > 1)
@@ -158,14 +158,23 @@ namespace Perennials
 
         public override bool isPlaceable()
         {
+            return false;
             //Logger.Log("Checking if fruit is placeable...");
-            return (Game1.currentLocation.objects.ContainsKey(Game1.player.GetGrabTile()));
+            //return (Game1.currentLocation.objects.ContainsKey(Game1.player.GetGrabTile()));
         }
 
         public override bool canBePlacedHere(GameLocation l, Vector2 tile)
         {
+            return false;
             //Logger.Log("Checking if fruit can be placed here...");
-            return (l.objects.ContainsKey(tile));
+            //return (l.objects.ContainsKey(tile));
+        }
+
+        public void overrideMachineResult(StardewValley.Object machine)
+        {
+            if (!machine.name.Equals("Keg") && !machine.name.Equals("PreservesJar"))
+                return;
+
         }
 
         public override bool placementAction(GameLocation location, int x, int y, Farmer who = null)
@@ -186,6 +195,7 @@ namespace Perennials
                     Logger.Log("Placed " + fruit + " into the machine, expecting " + qualityPrefix + fruit + " Wine out.");
                     machine.heldObject.Value.name = qualityPrefix + fruit + " Wine";
                     machine.heldObject.Value.preserve.Value = new PreserveType?(PreserveType.Wine);
+                    return true;
                 }
                 else
                 {

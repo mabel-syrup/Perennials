@@ -16,6 +16,7 @@ namespace Perennials
     {
         
         public static Dictionary<string, string> cropDictionary;
+        public static Dictionary<string, string> cropTypeDictionary;
         public static Texture2D cropSpriteSheet;
         public static List<int> ageQualities = new List<int> {0, 50, 90, 120, 145, 165, 180, 189, 195, 198, 200 };
 
@@ -27,16 +28,16 @@ namespace Perennials
         public List<int> regrowthStages;
         public List<string> seasonsToGrowIn;
         public bool perennial;
-        private bool tropical;
-        private bool multiHarvest;
-        private int daysBetweenHarvest;
+        public bool tropical;
+        public bool multiHarvest;
+        public int daysBetweenHarvest;
         public int rowInSpriteSheet;
         public int columnInSpriteSheet;
-        private double hydrationRequirement;
+        private double hydrationRequirement = 0;
         public bool impassable = false;
         public bool shakable = true;
         public string specialType;
-        private int yearsToFruit;
+        public int yearsToFruit;
         public int nReq;
         public int pReq;
         public int kReq;
@@ -49,7 +50,6 @@ namespace Perennials
         public int currentPhase;
         public int currentSprite;
         public bool hasFruit = false;
-        private bool hasMatured = false;
 
         public bool mature = false;
         public bool dormant = false;
@@ -58,7 +58,7 @@ namespace Perennials
         public int seedDaysToMature = 0;
         public int regrowDaysToMature = 0;
 
-        private int daysUntilHarvest = 0;
+        public int daysUntilHarvest = 0;
         public double hydration;
         public int neighbors;
         public double weedless;
@@ -72,8 +72,8 @@ namespace Perennials
         public int p;
         public int k;
         public bool flip = false;
-        private Color tintColor = Color.ForestGreen;
-        private int seasonOffset;
+        public Color tintColor = Color.ForestGreen;
+        public int seasonOffset;
 
 
         public SoilCrop()
@@ -83,19 +83,19 @@ namespace Perennials
 
         //Growing days/Fruiting days/Spring/Summer/Fall/Winter/Perennial/Hardy/Multiple Harvests/Regrow Time/Sprite Index
 
-        public static string getCropType(string cropName)
-        {
-            if (cropDictionary.ContainsKey(cropName))
-            {
-                Dictionary<string, string> cropData = getCropFromXNB(cropDictionary[cropName]);
-                return cropData["specialType"];
-            }
-            else
-            {
-                Logger.Log("No crop found by the name " + cropName);
-                return "";
-            }
-        }
+        //public static string getCropType(string cropName)
+        //{
+        //    if (cropDictionary.ContainsKey(cropName))
+        //    {
+        //        Dictionary<string, string> cropData = getCropFromXNB(cropDictionary[cropName]);
+        //        return cropData["specialType"];
+        //    }
+        //    else
+        //    {
+        //        Logger.Log("No crop found by the name " + cropName);
+        //        return "";
+        //    }
+        //}
 
         public SoilCrop(string cropName, int heightOffset=0)
         {
@@ -114,42 +114,10 @@ namespace Perennials
                 regrowthStages = new List<int>();
                 seasonsToGrowIn = new List<string>();
                 seasonOffset = offsetForSeason();
-                nReq = 1;
-                pReq = p;
-                kReq = k;
-                hydrationRequirement = 1f;
-
+                Logger.Log("Parsing a " + crop + " crop...");
                 Dictionary<string, string> cropData = getCropFromXNB(cropDictionary[cropName]);
+                loadFromXNBData(cropData);
 
-                string[] growStages = cropData["growthTimes"].Split(' ');
-                foreach (string stage in growStages)
-                {
-                    //Logger.Log("Adding growthstage of " + stage + " to " + cropName + "'s growth stages...");
-                    growthStages.Add(Convert.ToInt32(stage));
-                }
-                string[] regrowStages = cropData["fruitTimes"].Split(' ');
-                foreach (string stage in regrowStages)
-                    regrowthStages.Add(Convert.ToInt32(stage));
-                if (Convert.ToBoolean(cropData["spring"]))
-                    seasonsToGrowIn.Add("spring");
-                if (Convert.ToBoolean(cropData["summer"]))
-                    seasonsToGrowIn.Add("summer");
-                if (Convert.ToBoolean(cropData["fall"]))
-                    seasonsToGrowIn.Add("fall");
-                if (Convert.ToBoolean(cropData["winter"]))
-                    seasonsToGrowIn.Add("winter");
-                perennial = Convert.ToBoolean(cropData["perennial"]);
-                tropical = Convert.ToBoolean(cropData["hardy"]);
-                multiHarvest = Convert.ToBoolean(cropData["multipleHarvests"]);
-                daysBetweenHarvest = Convert.ToInt32(cropData["nextHarvest"]);
-                rowInSpriteSheet = Convert.ToInt32(cropData["parentSheetIndex"]);
-                columnInSpriteSheet = 0;
-                specialType = cropData["specialType"];
-                yearsToFruit = Convert.ToInt32(cropData["growthYears"]);
-                hydrationRequirement = (Convert.ToInt32(cropData["hydration"]) / 100);
-                //int parentSheetIndex = Convert.ToInt32(cropData["parentSheetIndex"]);
-                //rowInSpriteSheet = (int)Math.Floor((Double)(parentSheetIndex / 2));
-                //columnInSpriteSheet = parentSheetIndex % 2;
                 flip = Game1.random.NextDouble() < 0.5;
                 Logger.Log("Successfully created a " + crop + " plant. Sprite: row " + rowInSpriteSheet + ", col " + columnInSpriteSheet);
                 calculateGrowthPatterns();
@@ -157,11 +125,78 @@ namespace Perennials
             }
             else
             {
-                throw new KeyNotFoundException("The Crops.xml file did not contain a valid definition for the crop name.  Please contact the mod author if this issue persists.");
+                throw new KeyNotFoundException("The xml file did not contain a valid definition for the crop name!");
             }
         }
 
-        public static Dictionary<string, string> getCropFromXNB(string data)
+        public virtual void loadFromXNBData(Dictionary<string, string> cropData)
+        {
+            Logger.Log("Parsing as a standard crop...");
+            string[] growStages = cropData["growthTimes"].Split(' ');
+            foreach (string stage in growStages)
+            {
+                growthStages.Add(Convert.ToInt32(stage));
+            }
+            parseSecondaryGrowth(cropData["regrowthTimes"]);
+            if (Convert.ToBoolean(cropData["spring"]))
+                seasonsToGrowIn.Add("spring");
+            if (Convert.ToBoolean(cropData["summer"]))
+                seasonsToGrowIn.Add("summer");
+            if (Convert.ToBoolean(cropData["fall"]))
+                seasonsToGrowIn.Add("fall");
+            if (Convert.ToBoolean(cropData["winter"]))
+                seasonsToGrowIn.Add("winter");
+            perennial = Convert.ToBoolean(cropData["perennial"]);
+            tropical = Convert.ToBoolean(cropData["tropical"]);
+            parseMultiHarvest(cropData["daysBetweenHarvest"]);
+            rowInSpriteSheet = Convert.ToInt32(cropData["parentSheetIndex"]);
+            columnInSpriteSheet = 0;
+            parseYears(cropData["growthYears"]);
+            string[] npk = cropData["npk"].Split(' ');
+            nReq = Convert.ToInt32(npk[0]);
+            pReq = Convert.ToInt32(npk[1]);
+            kReq = Convert.ToInt32(npk[2]);
+            //hydrationRequirement = (Convert.ToInt32(cropData["hydration"]) / 100);
+        }
+
+        public void parseSecondaryGrowth(string growth)
+        {
+            if (growth is null || growth.Length == 0 || growth == "0")
+            {
+                return;
+            }
+            string[] regrowStages = growth.Split(' ');
+            foreach (string stage in regrowStages)
+                regrowthStages.Add(Convert.ToInt32(stage));
+        }
+
+        public void parseYears(string years)
+        {
+            if (years is null || years.Length == 0 || years == "0")
+            {
+                yearsToFruit = 0;
+            }
+            else
+            {
+                yearsToFruit = Convert.ToInt32(years);
+            }
+        }
+
+        public void parseMultiHarvest(string multiHarvestString)
+        {
+            if (multiHarvestString is null || multiHarvestString.Length == 0 || multiHarvestString == "0")
+            {
+                daysBetweenHarvest = 0;
+                multiHarvest = false;
+            }
+            else
+            {
+                daysBetweenHarvest = Convert.ToInt32(multiHarvestString);
+                multiHarvest = true;
+            }
+        }
+
+        public virtual Dictionary<string, string> getCropFromXNB(string data)
         {
             Dictionary<string, string> cropData = new Dictionary<string, string>();
             string[] substrings = data.Split('/');
@@ -169,25 +204,22 @@ namespace Perennials
             {
                 cropData["parentSheetIndex"] = substrings[0];
                 cropData["growthTimes"] = substrings[1];
-                cropData["fruitTimes"] = substrings[2];
-                cropData["spring"] = substrings[3];
-                cropData["summer"] = substrings[4];
-                cropData["fall"] = substrings[5];
-                cropData["winter"] = substrings[6];
-                cropData["perennial"] = substrings[7];
-                cropData["hardy"] = substrings[8];
-                cropData["multipleHarvests"] = substrings[9];
-                cropData["nextHarvest"] = substrings[10];
-                cropData["specialType"] = substrings[11];
-                cropData["growthYears"] = substrings[12];
-                cropData["hydration"] = substrings[13];
-                Logger.Log("Parsed successfully.");
-                Logger.Log("Special type: " + cropData["specialType"] + " Growth Years: " + cropData["growthYears"]);
+                cropData["regrowthTimes"] = substrings[2];
+                cropData["daysBetweenHarvest"] = substrings[3];
+                cropData["spring"] = substrings[4];
+                cropData["summer"] = substrings[5];
+                cropData["fall"] = substrings[6];
+                cropData["winter"] = substrings[7];
+                cropData["perennial"] = substrings[8];
+                cropData["tropical"] = substrings[9];
+                cropData["growthYears"] = substrings[10];
+                cropData["npk"] = substrings[11];
+                Logger.Log("Parsed successfully as standard crop.");
                 return cropData;
             }
             catch (IndexOutOfRangeException)
             {
-                Logger.Log("Crop data is not in correct format!  Given\n" + data);
+                Logger.Log("Standard crop data in Crops.xml is not in correct format!  Given\n" + data);
                 return null;
             }
         }
@@ -199,7 +231,7 @@ namespace Perennials
 
         public bool produceWeeds()
         {
-            if (specialType.Equals("Scythe") || specialType.Equals("Bush"))
+            if (this is CropScythe || this is CropBush)
                 return false;
             weeds = true;
             return true;
@@ -207,7 +239,7 @@ namespace Perennials
 
         public bool isScytheHarvest()
         {
-            return specialType.Equals("Schythe");
+            return this is CropScythe;
         }
 
         public virtual bool isSeed()
@@ -249,7 +281,7 @@ namespace Perennials
             if (spoofSeason is null)
                 spoofSeason = Game1.currentSeason;
             int flipped = flip ? 1 : 0;
-            if (specialType == "Trellis")
+            if (this is CropTrellis)
             {
                 if (!isGrowingSeason(spoofSeason))
                 {
@@ -399,7 +431,7 @@ namespace Perennials
                     //Do nothing, the seed is dormant.
                 }
                 //Bushes retain their progress in the off-season, so long as they aren't tropical.
-                else if (specialType.Equals("Bush") && !tropical)
+                else if (this is CropBush && !tropical)
                 {
                     if(age > 0 && mature)
                     {
@@ -441,7 +473,7 @@ namespace Perennials
                     weedless = 1f;
                     report += " It is now " + years + " years old.";
                 }
-                else if (specialType.Equals("Root"))
+                else if (this is CropRoot)
                 {
                     report += "an out of season root, ";
                     if (!mature)
@@ -633,7 +665,7 @@ namespace Perennials
             //Vanilla dead sprite selection
             if (this.dead)
                 return new Rectangle(64 + number % 4 * 16, 1024, 16, 32);
-            else if (isSeed() && (!specialType.Equals("Bush") || !dormant))
+            else if (isSeed() && (!(this is CropBush) || !dormant))
                 return new Rectangle((columnInSpriteSheet * 128) + ((currentSprite - (number % 2)) * 16), rowInSpriteSheet * 32, 16, 32);
             return new Rectangle((columnInSpriteSheet * 128) + (currentSprite * 16), rowInSpriteSheet * 32, 16, 32);
         }
@@ -655,6 +687,51 @@ namespace Perennials
             );
         }
 
+        public virtual void drawLensGraphics(SpriteBatch b, Vector2 tileLocation, bool hydrated, bool flooded, bool weeds)
+        {
+            if (!Game1.player.hasItemInInventoryNamed("Magnifying Glass"))
+                return;
+            Color lensColor = Color.White;
+            switch (MagnifyingGlass.lens)
+            {
+                //Hydration
+                case 0:
+                    if (hydrated)
+                        return;
+                    lensColor = flooded ? MagnifyingGlass.flooded : MagnifyingGlass.dry;
+                    break;
+                //Weeds
+                case 1:
+                    if (!weeds)
+                        return;
+                    lensColor = MagnifyingGlass.weeds;
+                    break;
+                case 2:
+                case 3:
+                    if (neighbors == 0)
+                        return;
+                    lensColor = MagnifyingGlass.neighbors * (1f - (0.25f * neighbors));
+                    break;
+            }
+            b.Draw(
+                MagnifyingGlass.lensOverlay,
+                Game1.GlobalToLocal(Game1.viewport, new Vector2((float)((double)tileLocation.X * (double)Game1.tileSize), (float)((double)tileLocation.Y * (double)Game1.tileSize))),
+                new Microsoft.Xna.Framework.Rectangle?(
+                    new Microsoft.Xna.Framework.Rectangle(
+                        0, 0, 16, 16
+                    )
+                ),
+                lensColor,
+                0.0f,
+                Vector2.Zero,
+                4f,
+                SpriteEffects.None,
+                1f
+            );
+        }
+
+
+
         public virtual void drawInMenu(SpriteBatch b, Vector2 screenPosition, Color toTint, float rotation, float scale, float layerDepth)
         {
             b.Draw(cropSpriteSheet, screenPosition, new Rectangle?(this.getSprite(0)), toTint, rotation, new Vector2((float)(Game1.tileSize / 2), (float)(Game1.tileSize + Game1.tileSize / 2)), scale, this.flip ? SpriteEffects.FlipHorizontally : SpriteEffects.None, layerDepth);
@@ -669,7 +746,7 @@ namespace Perennials
             //return "Currently " + (dead ? "dead." : (regrowing ? "regrowing, " : " ") + dayOfCurrentPhase + " days into current phase, and in phase " + currentPhase + ". Hydration level is " + hydration + ". Crop is " + age + " days old.") + "It is " + (seasonsToGrowIn.Contains(Game1.currentSeason) ? "" : "not ") + "this crop's growing season.";
         }
 
-        public Dictionary<string, string> Save()
+        public virtual Dictionary<string, string> Save()
         {
             /*
             public int dayOfCurrentPhase;
@@ -695,6 +772,11 @@ namespace Perennials
             data["years"] = years.ToString();
             data["hasFruit"] = hasFruit.ToString();
             data["daysUntilHarvest"] = daysUntilHarvest.ToString();
+            return saveOverride(data);
+        }
+
+        public virtual Dictionary<string, string> saveOverride(Dictionary<string, string> data)
+        {
             return data;
         }
 
@@ -730,8 +812,14 @@ namespace Perennials
                 hasFruit = false;
                 daysUntilHarvest = daysBetweenHarvest;
             }
+            loadOverride(data);
             calculateGrowthPatterns();
             updateSpriteIndex();
+        }
+
+        public virtual void loadOverride(Dictionary<string, string> data)
+        {
+            return;
         }
     }
 }

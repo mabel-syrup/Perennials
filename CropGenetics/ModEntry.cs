@@ -17,6 +17,7 @@ namespace Perennials
 {
     public class ModEntry : Mod
     {
+        
         private bool gameLoaded = false;
 
         public override void Entry(IModHelper helper)
@@ -27,9 +28,11 @@ namespace Perennials
             Global.addType(new CropSoil());
             Global.addType(new SeedPacket());
             Global.addType(new UtilityWand());
+            Global.addType(new MagnifyingGlass());
             Global.addType(new Fruit());
             Global.addType(new Tree());
             Global.addType(new Spigot());
+            Global.addType(new Drain());
             Global.addType(new Fertilizer());
             Global.addType(new CompostBin());
 
@@ -41,11 +44,14 @@ namespace Perennials
             CropSoil.populateDrawGuide();
             CropSprawler.populateDrawGuide();
             IrrigationBridge.populateDrawGuide();
+            MagnifyingGlass.loadLensLabels();
 
             //Initialize spritesheet dictionaries
             CropBush.bushSprites = new Dictionary<string, Texture2D>();
             CropSprawler.sprawlerSprites = new Dictionary<string, Texture2D>();
             Tree.trunkSheets = new Dictionary<string, Texture2D>();
+            SoilCrop.cropDictionary = new Dictionary<string, string>();
+            SoilCrop.cropTypeDictionary = new Dictionary<string, string>();
 
             //Load spritesheets
             CropSoil.flatTexture = helper.Content.Load<Texture2D>("assets/cropsoil_flat.png", ContentSource.ModFolder);
@@ -58,10 +64,19 @@ namespace Perennials
             IrrigationBridge.floorSheet = helper.Content.Load<Texture2D>("TerrainFeatures/Flooring", ContentSource.GameContent);
             IrrigationBridge.fenceSheet = helper.Content.Load<Texture2D>("assets/bridgeFenceTemplate.png", ContentSource.ModFolder);
             PerennialsGlobal.objectSpriteSheet = helper.Content.Load<Texture2D>("assets/craftables.png", ContentSource.ModFolder);
+            PerennialsGlobal.toolSpriteSheet = helper.Content.Load<Texture2D>("assets/Tools.png", ContentSource.ModFolder);
+            MagnifyingGlass.lensOverlay = helper.Content.Load<Texture2D>("assets/LensOverlay.png", ContentSource.ModFolder);
+
 
             //Load xnb files
             SeedPacket.seeds = helper.Content.Load<Dictionary<string, string>>("data/Seeds.xnb", ContentSource.ModFolder);
-            SoilCrop.cropDictionary = helper.Content.Load<Dictionary<string, string>>("data/Crops.xnb", ContentSource.ModFolder);
+            readCropDataFromXNB("Bush");
+            readCropDataFromXNB("Crop");
+            readCropDataFromXNB("Root");
+            readCropDataFromXNB("Scythe");
+            readCropDataFromXNB("Sprawler");
+            readCropDataFromXNB("Trellis");
+
             Fruit.fruits = helper.Content.Load<Dictionary<string, string>>("data/Fruits.xnb", ContentSource.ModFolder);
             Fertilizer.fertilizers = helper.Content.Load<Dictionary<string, string>>("data/Fertilizers.xnb", ContentSource.ModFolder);
 
@@ -85,6 +100,22 @@ namespace Perennials
             //Helper.Events.Display.RenderingActiveMenu += MenuEvents_MenuChanged;
         }
 
+        private void readCropDataFromXNB(string cropFile)
+        {
+            foreach (KeyValuePair<string, string> crop in Helper.Content.Load<Dictionary<string, string>>("data/" + cropFile + ".xnb", ContentSource.ModFolder))
+            {
+                if (crop.Key == "Name")
+                    continue;
+                if (SoilCrop.cropDictionary.ContainsKey(crop.Key))
+                {
+                    Logger.Log(crop + " was already defined as a crop!  " + (SoilCrop.cropTypeDictionary.ContainsKey(crop.Key) ? (crop.Key + " was a " + SoilCrop.cropTypeDictionary[crop.Key] + ".") : crop.Key + " was undefined in crop type dictionary."));
+                    continue;
+                }
+                SoilCrop.cropDictionary.Add(crop.Key, crop.Value);
+                SoilCrop.cropTypeDictionary[crop.Key] = cropFile;
+            }
+        }
+
         private void loadTreeData()
         {
             //For testing purposes, only loads the white oak
@@ -102,11 +133,9 @@ namespace Perennials
 
         private void loadCropData()
         {
-            foreach(string crop in SoilCrop.cropDictionary.Keys)
+            foreach(string crop in SoilCrop.cropTypeDictionary.Keys)
             {
-                Dictionary<string, string> cropData = SoilCrop.getCropFromXNB(SoilCrop. cropDictionary[crop]);
-                string specialType = cropData["specialType"];
-                if (specialType.Equals("Bush"))
+                if(SoilCrop.cropTypeDictionary[crop] == "Bush")
                 {
                     Logger.Log("Loading bush sprite sheet for " + crop + "...");
                     try
@@ -118,7 +147,7 @@ namespace Perennials
                         Logger.Log("Could not find image file 'assets/bush/" + crop + ".png'!", LogLevel.Error);
                     }
                 }
-                else if (specialType.Equals("Sprawler"))
+                else if (SoilCrop.cropTypeDictionary[crop] == "Sprawler")
                 {
                     Logger.Log("Loading sprawler sprite sheet for " + crop + "...");
                     try
@@ -301,9 +330,11 @@ namespace Perennials
         {
             foreach(StardewValley.Farmer farmer in Game1.getAllFarmers())
             {
-                farmer.addItemByMenuIfNecessaryElseHoldUp(new CompostBin(Vector2.Zero));
-                farmer.addItemByMenuIfNecessaryElseHoldUp(new Fertilizer("Wood Ash", 12));
+                //farmer.addItemByMenuIfNecessaryElseHoldUp(new MagnifyingGlass());
+                //farmer.addItemByMenuIfNecessaryElseHoldUp(new CompostBin(Vector2.Zero));
+                //farmer.addItemByMenuIfNecessaryElseHoldUp(new Fertilizer("Wood Ash", 12));
                 //farmer.addItemByMenuIfNecessaryElseHoldUp(new Spigot(Vector2.Zero));
+                //farmer.addItemByMenuIfNecessaryElseHoldUp(new Drain(Vector2.Zero));
                 //farmer.addItemByMenuIfNecessaryElseHoldUp(new Trowel());
                 //farmer.addItemByMenuIfNecessaryElseHoldUp(new Shovel());
                 //farmer.addItemByMenuIfNecessaryElseHoldUp(new SeedPacket(Vector2.Zero, "Cauliflower", 28));
